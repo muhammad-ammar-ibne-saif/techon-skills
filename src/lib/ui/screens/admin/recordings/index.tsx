@@ -39,6 +39,8 @@ import { formatDate, getStaffEyebrow } from "@/lib/helpers"
 import { useUser } from "@/lib/providers/user"
 import { CONFIG } from "@/utils/constants"
 
+import { DriveFolders } from "./drive-folders"
+
 type RecordingRow = {
   id: string
   courseId: string
@@ -218,7 +220,7 @@ export const AdminRecordingsScreen = () => {
         </div>
         <Button variant="brand-secondary" shape="pill" className="gap-2" onClick={openCreate} disabled={!courses.length}>
           <PlusIcon className="size-4" />
-          Add recording
+          Add one video
         </Button>
       </div>
 
@@ -235,21 +237,21 @@ export const AdminRecordingsScreen = () => {
         <div className="mb-6 flex gap-3 rounded-2xl border bg-background/60 p-4 text-sm">
           <ShieldCheckIcon className="text-(--brand-primary) mt-0.5 size-5 shrink-0" />
           <div>
-            <div className="font-semibold">How to keep recordings private</div>
+            <div className="font-semibold">How to set it up</div>
             <ol className="text-muted-foreground mt-1 list-decimal space-y-0.5 pl-5">
               <li>
-                Share each course or batch folder in Google Drive with{" "}
+                In Google Drive, share each course or batch folder with{" "}
                 <span className="text-primary select-all font-mono text-xs">{setup.serviceAccountEmail}</span> as <b>Viewer</b>.
+                Keep General access on &quot;Restricted&quot; and don&apos;t share it with students.
               </li>
-              <li>Remove students from the folder and turn off &quot;Anyone with the link&quot;.</li>
-              <li>Paste each recording&apos;s Drive link here. Students never see that link.</li>
               <li>
-                To show a recording to one batch only, put students in{" "}
+                Click <b>Link a Drive folder</b> below, paste the folder link, and choose the course (and{" "}
                 <Link href={CONFIG.ROUTES.ADMIN.BATCHES} className="text-primary underline">
-                  batches
-                </Link>{" "}
-                and choose it under &quot;Who can watch&quot;.
+                  batch
+                </Link>
+                , if the folder is for one batch).
               </li>
+              <li>That&apos;s it: every video you put in the folder appears for those students. They never see the Drive link.</li>
             </ol>
           </div>
         </div>
@@ -268,6 +270,8 @@ export const AdminRecordingsScreen = () => {
           ))}
         </select>
       </div>
+
+      <DriveFolders courses={courses} courseFilter={courseFilter} onChanged={() => refetch()} />
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
@@ -366,9 +370,9 @@ export const AdminRecordingsScreen = () => {
         <DialogPrimitive.Portal>
           <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
           <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl border bg-background p-6 shadow-xl outline-none">
-            <DialogPrimitive.Title className="text-lg font-semibold">{editId ? "Edit recording" : "Add recording"}</DialogPrimitive.Title>
+            <DialogPrimitive.Title className="text-lg font-semibold">{editId ? "Edit recording" : "Add one video"}</DialogPrimitive.Title>
             <DialogPrimitive.Description className="text-muted-foreground mt-1 text-sm">
-              The portal checks it can open the Drive file before saving.
+              For a single video file. To add a whole folder, use &quot;Link a Drive folder&quot; instead.
             </DialogPrimitive.Description>
             <div className="mt-4 space-y-4">
               <div>
@@ -422,7 +426,7 @@ export const AdminRecordingsScreen = () => {
                 <Input value={form.driveLink} onChange={(e) => setForm((f) => ({ ...f, driveLink: e.target.value }))} placeholder="https://drive.google.com/file/d/…/view" />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1 block">Lecture date</label>
+                <label className="text-sm font-medium mb-1 block">Date recorded</label>
                 <Input type="date" value={form.recordedAt} onChange={(e) => setForm((f) => ({ ...f, recordedAt: e.target.value }))} />
               </div>
               <div>

@@ -58,3 +58,24 @@ export const GET_RECORDING_PLAYBACK = gql`
         }
     }
 `;
+
+export const RECORDING_FOLDER_FIELDS = `
+    id
+    courseId
+    course { id title }
+    batchIds
+    batches { id name }
+    name
+    driveFolderId
+    lastSyncedAt
+    lastSyncError
+    recordingCount
+`;
+
+export const GET_RECORDING_FOLDERS = gql`
+    query GetRecordingFolders($courseId: ID) {
+        getRecordingFolders(courseId: $courseId) {
+            ${RECORDING_FOLDER_FIELDS}
+        }
+    }
+`;

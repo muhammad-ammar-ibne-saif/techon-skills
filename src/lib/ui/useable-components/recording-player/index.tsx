@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useLazyQuery } from "@apollo/client/react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Loader2Icon, XIcon } from "lucide-react"
@@ -29,6 +29,9 @@ export function RecordingPlayerDialog({ recordingId, title, onClose }: Props) {
   }, [recordingId, loadPlayback])
 
   const playback = recordingId ? data?.getRecordingPlayback : undefined
+  // The stream URL that failed to load (e.g. Drive blocked it); a new URL clears it.
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+  const failed = !!playback && failedUrl === playback.url
 
   return (
     <DialogPrimitive.Root open={!!recordingId} onOpenChange={(open) => !open && onClose()}>
@@ -52,9 +55,17 @@ export function RecordingPlayerDialog({ recordingId, title, onClose }: Props) {
                 {error.message}
               </div>
             )}
-            {playback && !loading && (
+            {failed && (
+              <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-white/90">
+                This recording can&apos;t be played right now. Staff: use &quot;Check Drive access&quot; on the recordings page
+                to see why.
+              </div>
+            )}
+            {playback && !loading && !failed && (
               <video
                 key={playback.url}
+                src={playback.url}
+                onError={() => setFailedUrl(playback.url)}
                 className="size-full"
                 controls
                 autoPlay
@@ -64,7 +75,6 @@ export function RecordingPlayerDialog({ recordingId, title, onClose }: Props) {
                 disablePictureInPicture
                 onContextMenu={(e) => e.preventDefault()}
               >
-                <source src={playback.url} type={playback.mimeType} />
                 Your browser can&apos;t play this video.
               </video>
             )}

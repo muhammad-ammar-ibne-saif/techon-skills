@@ -2,7 +2,17 @@
 
 import { useMemo, useState } from "react"
 import { useMutation, useQuery } from "@apollo/client/react"
-import { ArchiveIcon, ArchiveRestoreIcon, CheckIcon, Loader2Icon, PencilIcon, PlusIcon, UsersRoundIcon, XIcon } from "lucide-react"
+import {
+  ArchiveIcon,
+  ArchiveRestoreIcon,
+  CheckIcon,
+  CombineIcon,
+  Loader2Icon,
+  PencilIcon,
+  PlusIcon,
+  UsersRoundIcon,
+  XIcon,
+} from "lucide-react"
 import toast from "react-hot-toast"
 
 import { Button } from "@/lib/ui/useable-components/button"
@@ -13,6 +23,7 @@ import {
   GET_BATCH_ROSTER,
   GET_BATCHES,
   GET_COURSES,
+  MERGE_BATCHES,
   SET_STUDENTS_BATCH,
   UPDATE_BATCH,
 } from "@/lib/graphql"
@@ -36,10 +47,18 @@ export const AdminBatchesScreen = () => {
   const [batchFilter, setBatchFilter] = useState<"all" | "none" | string>("all")
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkBatch, setBulkBatch] = useState(NO_BATCH)
+  const [mergeOpen, setMergeOpen] = useState(false)
+  const [mergeInto, setMergeInto] = useState("")
+  const [mergeFrom, setMergeFrom] = useState<Set<string>>(new Set())
 
   const { data: coursesData } = useQuery<{ getCourses: { id: string; title: string }[] }>(GET_COURSES)
   const courses = useMemo(
-    () => filterCoursesForGrader(coursesData?.getCourses ?? [], userProfileInfo?.role, userProfileInfo?.allowedMarkGradesOn),
+    () =>
+      filterCoursesForGrader(
+        coursesData?.getCourses ?? [],
+        userProfileInfo?.role,
+        userProfileInfo?.allowedMarkGradesOn
+      ),
     [coursesData, userProfileInfo?.role, userProfileInfo?.allowedMarkGradesOn]
   )
   const courseId = pickedCourseId || courses[0]?.id || ""
@@ -85,13 +104,44 @@ export const AdminBatchesScreen = () => {
     },
     onError,
   })
-  const [setStudentsBatch, { loading: moving }] = useMutation<{ setStudentsBatch: number }>(SET_STUDENTS_BATCH, { onError })
+  const [setStudentsBatch, { loading: moving }] = useMutation<{ setStudentsBatch: number }>(SET_STUDENTS_BATCH, {
+    onError,
+  })
+  const [mergeBatches, { loading: merging }] = useMutation<{ mergeBatches: number }>(MERGE_BATCHES, { onError })
+
+  const closeMerge = () => {
+    setMergeOpen(false)
+    setMergeInto("")
+    setMergeFrom(new Set())
+  }
+  const toggleMergeFrom = (id: string) =>
+    setMergeFrom((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  const submitMerge = async () => {
+    const from = [...mergeFrom].filter((id) => id !== mergeInto)
+    if (!mergeInto || !from.length) return toast.error("Pick the batch to keep and at least one batch to merge into it")
+    const names = from.map((id) => batchName(id)).join(", ")
+    if (!window.confirm(`Move every student of ${names} into ${batchName(mergeInto)} and archive ${names}?`)) return
+    const res = await mergeBatches({ variables: { fromBatchIds: from, intoBatchId: mergeInto } })
+    if (res.data == null) return
+    toast.success(
+      `Merged into ${batchName(mergeInto)} (${res.data.mergeBatches} student${res.data.mergeBatches === 1 ? "" : "s"} moved)`
+    )
+    closeMerge()
+    setBatchFilter("all")
+    refreshAll()
+  }
 
   const changeCourse = (id: string) => {
     setPickedCourseId(id)
     setSelected(new Set())
     setBatchFilter("all")
     setBulkBatch(NO_BATCH)
+    closeMerge()
   }
 
   const moveStudents = async (userIds: string[], batchId: string) => {
@@ -110,8 +160,7 @@ export const AdminBatchesScreen = () => {
       return next
     })
   const allVisibleSelected = visibleRoster.length > 0 && visibleRoster.every((s) => selected.has(s.id))
-  const toggleAllVisible = () =>
-    setSelected(allVisibleSelected ? new Set() : new Set(visibleRoster.map((s) => s.id)))
+  const toggleAllVisible = () => setSelected(allVisibleSelected ? new Set() : new Set(visibleRoster.map((s) => s.id)))
 
   return (
     <div className="w-full py-10 animate-in fade-in duration-700">
@@ -160,7 +209,11 @@ export const AdminBatchesScreen = () => {
                   createBatch({ variables: { courseId, name: newName.trim() } })
                 }}
               >
-                <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Batch 3 – Jan 2027" />
+                <Input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="e.g. Batch 3 – Jan 2027"
+                />
                 <Button type="submit" variant="brand-secondary" size="icon" disabled={creating} title="Add batch">
                   {creating ? <Loader2Icon className="size-4 animate-spin" /> : <PlusIcon className="size-4" />}
                 </Button>
@@ -171,7 +224,9 @@ export const AdminBatchesScreen = () => {
                   <Loader2Icon className="size-5 animate-spin" />
                 </div>
               ) : listedBatches.length === 0 ? (
-                <p className="text-muted-foreground py-4 text-center text-sm">No batches yet. Add the first one above.</p>
+                <p className="text-muted-foreground py-4 text-center text-sm">
+                  No batches yet. Add the first one above.
+                </p>
               ) : (
                 <ul className="divide-y rounded-2xl border">
                   {listedBatches.map((b) => (
@@ -184,11 +239,22 @@ export const AdminBatchesScreen = () => {
                             updateBatch({ variables: { id: b.id, name: renameValue } })
                           }}
                         >
-                          <Input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} className="h-8" autoFocus />
+                          <Input
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            className="h-8"
+                            autoFocus
+                          />
                           <Button type="submit" variant="ghost" size="icon" title="Save">
                             <CheckIcon className="size-4" />
                           </Button>
-                          <Button type="button" variant="ghost" size="icon" title="Cancel" onClick={() => setRenameId(null)}>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            title="Cancel"
+                            onClick={() => setRenameId(null)}
+                          >
                             <XIcon className="size-4" />
                           </Button>
                         </form>
@@ -223,7 +289,11 @@ export const AdminBatchesScreen = () => {
                             title={b.isArchived ? "Restore" : "Archive"}
                             onClick={() => updateBatch({ variables: { id: b.id, isArchived: !b.isArchived } })}
                           >
-                            {b.isArchived ? <ArchiveRestoreIcon className="size-4" /> : <ArchiveIcon className="size-4" />}
+                            {b.isArchived ? (
+                              <ArchiveRestoreIcon className="size-4" />
+                            ) : (
+                              <ArchiveIcon className="size-4" />
+                            )}
                           </Button>
                         </>
                       )}
@@ -231,6 +301,66 @@ export const AdminBatchesScreen = () => {
                   ))}
                 </ul>
               )}
+              {activeBatches.length >= 2 &&
+                (mergeOpen ? (
+                  <div className="space-y-3 rounded-2xl border p-3">
+                    <div className="text-sm font-medium">Merge batches</div>
+                    <label className="block text-xs">
+                      <span className="text-muted-foreground mb-1 block">Keep this batch</span>
+                      <select
+                        value={mergeInto}
+                        onChange={(e) => setMergeInto(e.target.value)}
+                        className={cn(selectCls, "w-full")}
+                      >
+                        <option value="">Choose…</option>
+                        {activeBatches.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {mergeInto && (
+                      <fieldset className="space-y-1.5">
+                        <legend className="text-muted-foreground mb-1 text-xs">Move all their students into it</legend>
+                        {activeBatches
+                          .filter((b) => b.id !== mergeInto)
+                          .map((b) => (
+                            <label key={b.id} className="flex items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={mergeFrom.has(b.id)}
+                                onChange={() => toggleMergeFrom(b.id)}
+                              />
+                              {b.name}
+                              <span className="text-muted-foreground text-xs">({b.studentCount})</span>
+                            </label>
+                          ))}
+                      </fieldset>
+                    )}
+                    <p className="text-muted-foreground text-xs">
+                      Their recordings stay visible to the moved students, and the emptied batches are archived.
+                    </p>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="sm" onClick={closeMerge}>
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="brand-secondary"
+                        size="sm"
+                        disabled={merging || !mergeInto || ![...mergeFrom].some((id) => id !== mergeInto)}
+                        onClick={submitMerge}
+                      >
+                        {merging ? <Loader2Icon className="size-4 animate-spin" /> : "Merge"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button variant="outline" size="sm" className="w-full" onClick={() => setMergeOpen(true)}>
+                    <CombineIcon className="size-4" />
+                    Merge batches
+                  </Button>
+                ))}
               <p className="text-muted-foreground text-xs">
                 Archiving hides a batch from pickers; students and recordings keep it.
               </p>
@@ -282,7 +412,9 @@ export const AdminBatchesScreen = () => {
               ) : visibleRoster.length === 0 ? (
                 <div className="text-muted-foreground py-12 text-center">
                   <UsersRoundIcon className="mx-auto mb-3 size-10 opacity-50" />
-                  {roster.length === 0 ? "No students are enrolled in this course yet." : "No students match this filter."}
+                  {roster.length === 0
+                    ? "No students are enrolled in this course yet."
+                    : "No students match this filter."}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -290,7 +422,12 @@ export const AdminBatchesScreen = () => {
                     <thead className="bg-muted-surface/40 border-b">
                       <tr>
                         <th className="w-10 p-4">
-                          <input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible} aria-label="Select all" />
+                          <input
+                            type="checkbox"
+                            checked={allVisibleSelected}
+                            onChange={toggleAllVisible}
+                            aria-label="Select all"
+                          />
                         </th>
                         <th className="p-4 font-semibold">Student</th>
                         <th className="p-4 font-semibold">Batch</th>
@@ -321,7 +458,9 @@ export const AdminBatchesScreen = () => {
                                 disabled={moving}
                               >
                                 <option value={NO_BATCH}>No batch</option>
-                                {currentArchived && <option value={s.batchId!}>{batchName(s.batchId)} (archived)</option>}
+                                {currentArchived && (
+                                  <option value={s.batchId!}>{batchName(s.batchId)} (archived)</option>
+                                )}
                                 {activeBatches.map((b) => (
                                   <option key={b.id} value={b.id}>
                                     {b.name}
