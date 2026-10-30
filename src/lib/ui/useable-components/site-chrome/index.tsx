@@ -12,6 +12,7 @@ import { ContinueToDashboardDialog } from "@/lib/ui/useable-components/continue-
 import { ThemeSwitcher } from "@/lib/ui/useable-components/theme-switcher"
 import { CONFIG, SITE_PHONE_DISPLAY, SITE_PHONE_TEL_HREF, SITE_WHATSAPP_URL } from "@/utils/constants"
 import TechOnLogo from "@/lib/assets/techon-skills-logo-mark.png"
+import TechOnLogoFooter from "@/lib/assets/techon-skills-logo-mark-footer.png"
 import { SITE_EMAIL, siteButton, siteContainer } from "./ui"
 
 const ROUTES = CONFIG.ROUTES.PUBLIC
@@ -195,7 +196,7 @@ export function SiteFooter() {
 
         <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <Image src={TechOnLogo} alt="TechOn Skills" width={40} height={40} className="size-10 shrink-0 opacity-90 brightness-0 invert" />
+            <Image src={TechOnLogoFooter} alt="TechOn Skills" width={40} height={40} className="size-10 shrink-0" />
             <p className="font-mono text-[10px] leading-relaxed text-white/45">
               © {new Date().getFullYear()} TechOn Skills · Cloudrika Technologies, Lahore ·{" "}
               <a href={SITE_PHONE_TEL_HREF} className="hover:text-white">
