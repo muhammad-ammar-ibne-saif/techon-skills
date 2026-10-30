@@ -1,4 +1,4 @@
-import { CalendarIcon, FileTextIcon, LogsIcon, NewspaperIcon, SettingsIcon, TicketIcon, UsersIcon, LayoutDashboardIcon, UserPlusIcon, InboxIcon, ImageIcon, BookOpenIcon, BanknoteIcon, ClipboardCheckIcon, NotebookPenIcon, VideoIcon, ClipboardListIcon, TrendingUpIcon, ScrollTextIcon, FolderOpenIcon, UserCheckIcon, PlaySquareIcon, WalletIcon, ArchiveIcon } from "lucide-react"
+import { CalendarIcon, FileTextIcon, LogsIcon, NewspaperIcon, SettingsIcon, TicketIcon, UsersIcon, LayoutDashboardIcon, UserPlusIcon, InboxIcon, ImageIcon, BookOpenIcon, BanknoteIcon, ClipboardCheckIcon, NotebookPenIcon, VideoIcon, ClipboardListIcon, TrendingUpIcon, ScrollTextIcon, FolderOpenIcon, UserCheckIcon, PlaySquareIcon, WalletIcon, ArchiveIcon, UsersRoundIcon } from "lucide-react"
 import { CONFIG } from "./config"
 import { UserRole } from "@/utils/enums/user"
 
@@ -29,6 +29,7 @@ export const ADMIN_SIDEBAR_ITEMS = [
     { label: "Student progress", href: CONFIG.ROUTES.ADMIN.STUDENT_PROGRESS, icon: TrendingUpIcon, disabled: false, roles: INSTRUCTOR_STAFF },
     { label: "Certificates", href: CONFIG.ROUTES.ADMIN.CERTIFICATES, icon: ScrollTextIcon, disabled: false, roles: ADMIN_ONLY },
     { label: "Schedule lectures", href: CONFIG.ROUTES.ADMIN.SCHEDULE_LECTURES, icon: VideoIcon, disabled: false, roles: INSTRUCTOR_STAFF },
+    { label: "Batches", href: CONFIG.ROUTES.ADMIN.BATCHES, icon: UsersRoundIcon, disabled: false, roles: INSTRUCTOR_STAFF },
     { label: "Lecture recordings", href: CONFIG.ROUTES.ADMIN.RECORDINGS, icon: PlaySquareIcon, disabled: false, roles: INSTRUCTOR_STAFF },
     { label: "Attendance", href: CONFIG.ROUTES.ADMIN.ATTENDANCE, icon: UserCheckIcon, disabled: false, roles: INSTRUCTOR_STAFF },
     { label: "Uploaded images", href: CONFIG.ROUTES.ADMIN.IMAGES, icon: ImageIcon, disabled: false, roles: ADMIN_ONLY },

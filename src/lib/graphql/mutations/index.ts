@@ -15,5 +15,6 @@ export * from "./certificates";
 export * from "./course-content";
 export * from "./attendance";
 export * from "./recordings";
+export * from "./batches";
 export * from "./fee-plans";
 export * from "./finance";

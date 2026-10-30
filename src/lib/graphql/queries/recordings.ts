@@ -5,6 +5,8 @@ const RECORDING_FIELDS = `
     courseId
     course { id title slug }
     lectureId
+    batchIds
+    batches { id name }
     title
     description
     recordedAt

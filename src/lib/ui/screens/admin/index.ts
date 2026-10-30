@@ -19,5 +19,6 @@ export * from "./attendance"
 
 
 export * from "./recordings"
+export * from "./batches"
 export * from "./finance"
 export * from "./bin"

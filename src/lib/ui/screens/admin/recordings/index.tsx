@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import { useMutation, useQuery } from "@apollo/client/react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import {
@@ -27,6 +28,7 @@ import {
   CHECK_RECORDING_ACCESS,
   CREATE_RECORDING,
   DELETE_RECORDING,
+  GET_BATCHES,
   GET_COURSES,
   GET_RECORDINGS_FOR_STAFF,
   GET_RECORDINGS_SETUP,
@@ -35,11 +37,14 @@ import {
 import { filterCoursesForGrader } from "@/lib/helpers/grader-courses"
 import { formatDate, getStaffEyebrow } from "@/lib/helpers"
 import { useUser } from "@/lib/providers/user"
+import { CONFIG } from "@/utils/constants"
 
 type RecordingRow = {
   id: string
   courseId: string
   course?: { id: string; title: string } | null
+  batchIds: string[]
+  batches: { id: string; name: string }[]
   title: string
   description: string
   recordedAt: string
@@ -48,10 +53,27 @@ type RecordingRow = {
   driveFileName: string | null
 }
 
-type FormState = { title: string; description: string; driveLink: string; recordedAt: string; isPublished: boolean; courseId: string }
+type FormState = {
+  title: string
+  description: string
+  driveLink: string
+  recordedAt: string
+  isPublished: boolean
+  courseId: string
+  /** Empty = every batch of the course. */
+  batchIds: string[]
+}
 
 const today = () => new Date().toISOString().slice(0, 10)
-const emptyForm = (courseId: string): FormState => ({ title: "", description: "", driveLink: "", recordedAt: today(), isPublished: true, courseId })
+const emptyForm = (courseId: string): FormState => ({
+  title: "",
+  description: "",
+  driveLink: "",
+  recordedAt: today(),
+  isPublished: true,
+  courseId,
+  batchIds: [],
+})
 
 export function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return "—"
@@ -83,6 +105,16 @@ export const AdminRecordingsScreen = () => {
     fetchPolicy: "network-only",
   })
   const recordings = data?.getRecordingsForStaff ?? []
+
+  const { data: batchesData } = useQuery<{ getBatches: { id: string; name: string; isArchived: boolean }[] }>(GET_BATCHES, {
+    variables: { courseId: form.courseId, includeArchived: true },
+    skip: !formOpen || !form.courseId,
+    fetchPolicy: "network-only",
+  })
+  // Active batches, plus archived ones this recording is already limited to.
+  const formBatches = (batchesData?.getBatches ?? []).filter((b) => !b.isArchived || form.batchIds.includes(b.id))
+  const toggleFormBatch = (id: string) =>
+    setForm((f) => ({ ...f, batchIds: f.batchIds.includes(id) ? f.batchIds.filter((b) => b !== id) : [...f.batchIds, id] }))
 
   const onSaved = (message: string) => {
     toast.success(message)
@@ -122,6 +154,7 @@ export const AdminRecordingsScreen = () => {
       recordedAt: r.recordedAt.slice(0, 10),
       isPublished: r.isPublished,
       courseId: r.courseId,
+      batchIds: r.batchIds ?? [],
     })
     setFormOpen(true)
   }
@@ -140,6 +173,7 @@ export const AdminRecordingsScreen = () => {
             description: form.description,
             recordedAt: form.recordedAt,
             isPublished: form.isPublished,
+            batchIds: form.batchIds,
             ...(form.driveLink.trim() ? { driveLink: form.driveLink.trim() } : {}),
           },
         },
@@ -154,6 +188,7 @@ export const AdminRecordingsScreen = () => {
             driveLink: form.driveLink.trim(),
             recordedAt: form.recordedAt,
             isPublished: form.isPublished,
+            batchIds: form.batchIds,
           },
         },
       })
@@ -203,11 +238,18 @@ export const AdminRecordingsScreen = () => {
             <div className="font-semibold">How to keep recordings private</div>
             <ol className="text-muted-foreground mt-1 list-decimal space-y-0.5 pl-5">
               <li>
-                Share your recordings folder in Google Drive with{" "}
+                Share each course or batch folder in Google Drive with{" "}
                 <span className="text-primary select-all font-mono text-xs">{setup.serviceAccountEmail}</span> as <b>Viewer</b>.
               </li>
               <li>Remove students from the folder and turn off &quot;Anyone with the link&quot;.</li>
               <li>Paste each recording&apos;s Drive link here. Students never see that link.</li>
+              <li>
+                To show a recording to one batch only, put students in{" "}
+                <Link href={CONFIG.ROUTES.ADMIN.BATCHES} className="text-primary underline">
+                  batches
+                </Link>{" "}
+                and choose it under &quot;Who can watch&quot;.
+              </li>
             </ol>
           </div>
         </div>
@@ -256,7 +298,12 @@ export const AdminRecordingsScreen = () => {
                         <div className="font-medium">{r.title}</div>
                         {r.driveFileName && <div className="text-muted-foreground text-xs">{r.driveFileName}</div>}
                       </td>
-                      <td className="p-4 text-muted-foreground">{r.course?.title ?? "—"}</td>
+                      <td className="p-4 text-muted-foreground">
+                        <div>{r.course?.title ?? "—"}</div>
+                        <div className="text-xs">
+                          {r.batches?.length ? r.batches.map((b) => b.name).join(", ") : "All batches"}
+                        </div>
+                      </td>
                       <td className="p-4 text-muted-foreground text-xs">{formatDate(r.recordedAt)}</td>
                       <td className="p-4 text-muted-foreground text-xs">{formatDuration(r.durationSeconds)}</td>
                       <td className="p-4">
@@ -328,7 +375,7 @@ export const AdminRecordingsScreen = () => {
                 <label className="text-sm font-medium mb-1 block">Course</label>
                 <select
                   value={form.courseId}
-                  onChange={(e) => setForm((f) => ({ ...f, courseId: e.target.value }))}
+                  onChange={(e) => setForm((f) => ({ ...f, courseId: e.target.value, batchIds: [] }))}
                   className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
                 >
                   {courses.map((c) => (
@@ -336,6 +383,36 @@ export const AdminRecordingsScreen = () => {
                   ))}
                 </select>
               </div>
+              <fieldset>
+                <legend className="text-sm font-medium mb-1">Who can watch</legend>
+                {formBatches.length === 0 ? (
+                  <p className="text-muted-foreground text-xs">
+                    Everyone enrolled in this course. To limit it to a batch, first{" "}
+                    <Link href={CONFIG.ROUTES.ADMIN.BATCHES} className="text-primary underline">
+                      create batches
+                    </Link>
+                    .
+                  </p>
+                ) : (
+                  <div className="space-y-1.5 rounded-md border p-3">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={form.batchIds.length === 0}
+                        onChange={() => setForm((f) => ({ ...f, batchIds: [] }))}
+                      />
+                      All batches
+                    </label>
+                    {formBatches.map((b) => (
+                      <label key={b.id} className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={form.batchIds.includes(b.id)} onChange={() => toggleFormBatch(b.id)} />
+                        {b.name}
+                        {b.isArchived && <span className="text-muted-foreground text-xs">(archived)</span>}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </fieldset>
               <div>
                 <label className="text-sm font-medium mb-1 block">Title</label>
                 <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="e.g. Week 3 – React hooks" />

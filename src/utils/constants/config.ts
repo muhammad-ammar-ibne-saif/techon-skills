@@ -88,6 +88,7 @@ export const CONFIG = {
             USER_BIN: "/admin/bin",
             FINANCE: "/admin/finance",
             RECORDINGS: "/admin/recordings",
+            BATCHES: "/admin/batches",
             TICKETS: "/admin/tickets",
             NEWS: "/admin/news",
             LOGS: "/admin/logs",
