@@ -17,6 +17,8 @@ import {
   CpuIcon,
   FileImageIcon,
   ListChecksIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
 } from "lucide-react"
 import toast from "react-hot-toast"
 
@@ -24,7 +26,7 @@ import { Button } from "@/lib/ui/useable-components/button"
 import { Card, CardContent } from "@/lib/ui/useable-components/card"
 import { Input } from "@/lib/ui/useable-components/input"
 import { apiService } from "@/lib/services"
-import { GET_COURSES, GET_COURSE, DELETE_COURSE, CREATE_COURSE, UPDATE_COURSE } from "@/lib/graphql"
+import { GET_COURSES, GET_COURSE, DELETE_COURSE, CREATE_COURSE, UPDATE_COURSE, REORDER_COURSES } from "@/lib/graphql"
 import { ImageUpload } from "@/lib/ui/useable-components/image-upload"
 import { ConfirmDialog } from "@/lib/ui/useable-components/confirm-dialog"
 import { cn } from "@/lib/helpers"
@@ -81,6 +83,10 @@ export const AdminCoursesScreen = () => {
   })
   const [updateCourse, { loading: updating }] = useMutation(UPDATE_COURSE, {
     onCompleted: () => { toast.success("Course updated"); setAddOpen(false); resetForm(); setEditingId(null); refetch() },
+    onError: (e) => toast.error(e.message),
+  })
+  const [reorderCourses, { loading: reordering }] = useMutation(REORDER_COURSES, {
+    onCompleted: () => { toast.success("Course order saved"); refetch() },
     onError: (e) => toast.error(e.message),
   })
   const [loadCourseForEdit, { data: editCourseData }] = useLazyQuery<{
@@ -141,6 +147,15 @@ export const AdminCoursesScreen = () => {
     setEditingId(id)
     setAddOpen(true)
     void loadCourseForEdit({ variables: { id } })
+  }
+
+  /** Swaps a course with its neighbour; the list order is what students and visitors see. */
+  const moveCourse = (index: number, delta: -1 | 1) => {
+    const ids = courses.map((c) => c.id)
+    const target = index + delta
+    if (target < 0 || target >= ids.length) return
+    ;[ids[index], ids[target]] = [ids[target], ids[index]]
+    reorderCourses({ variables: { ids } })
   }
 
   const handleDelete = (id: string) => {
@@ -236,7 +251,7 @@ export const AdminCoursesScreen = () => {
           <div className="text-sm font-semibold text-secondary">Admin</div>
           <h1 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">Courses</h1>
           <p className="text-muted-foreground mt-2 max-w-2xl text-pretty">
-            Manage the course catalog. Add new courses with a step-by-step form or delete existing ones.
+            Manage the course catalog. Use the arrows to set the order courses appear in on the website and student portal.
           </p>
         </div>
         <Button variant="brand-secondary" shape="pill" className="gap-2 shrink-0" onClick={() => { setEditingId(null); resetForm(); setAddOpen(true) }}>
@@ -261,6 +276,7 @@ export const AdminCoursesScreen = () => {
               <table className="w-full text-left text-sm">
                 <thead className="border-b bg-muted-surface/40">
                   <tr>
+                    <th className="p-4 font-semibold">Order</th>
                     <th className="p-4 font-semibold">Course</th>
                     <th className="p-4 font-semibold">Slug</th>
                     <th className="p-4 font-semibold">Duration</th>
@@ -269,8 +285,19 @@ export const AdminCoursesScreen = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {courses.map((c) => (
+                  {courses.map((c, i) => (
                     <tr key={c.id} className="border-b transition-colors hover:bg-muted-surface/20">
+                      <td className="p-4">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground w-5 text-xs tabular-nums">{i + 1}</span>
+                          <Button variant="ghost" size="icon" title="Move up" aria-label={`Move ${c.title} up`} disabled={i === 0 || reordering} onClick={() => moveCourse(i, -1)}>
+                            <ArrowUpIcon className="size-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" title="Move down" aria-label={`Move ${c.title} down`} disabled={i === courses.length - 1 || reordering} onClick={() => moveCourse(i, 1)}>
+                            <ArrowDownIcon className="size-4" />
+                          </Button>
+                        </div>
+                      </td>
                       <td className="p-4">
                         <div className="font-medium">{c.title}</div>
                         {c.subtitle && <div className="text-muted-foreground text-xs">{c.subtitle}</div>}

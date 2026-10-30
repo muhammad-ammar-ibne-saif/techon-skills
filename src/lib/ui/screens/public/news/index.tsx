@@ -2,71 +2,60 @@
 
 import Link from "next/link"
 import { useQuery } from "@apollo/client/react"
-import { ArrowRightIcon, Loader2Icon, NewspaperIcon } from "lucide-react"
+import { ArrowRightIcon } from "lucide-react"
 
-import { Button } from "@/lib/ui/useable-components/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/lib/ui/useable-components/card"
+import { formatDateLong } from "@/lib/helpers"
 import { GET_NEWS_POSTS } from "@/lib/graphql"
+import { PageIntro, siteContainer } from "@/lib/ui/useable-components/site-chrome/ui"
+import { CONFIG } from "@/utils/constants"
+
+type NewsListItem = { id: string; title: string; description: string; createdAt?: string }
 
 export const PublicNewsScreen = () => {
-  const { data, loading, error } = useQuery<{ getNewsPosts: Array<{ id: string; title: string; description: string }> }>(GET_NEWS_POSTS)
+  const { data, loading, error } = useQuery<{ getNewsPosts: NewsListItem[] }>(GET_NEWS_POSTS)
   const posts = data?.getNewsPosts ?? []
 
   return (
-    <div className="w-full px-4 py-12 sm:px-6 lg:px-8 2xl:px-10">
-      <div className="mx-auto max-w-6xl space-y-10">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="text-sm font-semibold text-secondary">News</div>
-            <h1 className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
-              Updates from TechOn Skills
-            </h1>
-            <p className="text-muted-foreground max-w-2xl text-pretty text-lg leading-8">
-              Announcements, new course launches, and learning tips.
-            </p>
-          </div>
-          <span className="bg-(--brand-primary) text-(--text-on-dark) hidden size-12 items-center justify-center rounded-2xl sm:inline-flex">
-            <NewspaperIcon className="size-6" />
-          </span>
-        </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
-            <Loader2Icon className="size-6 animate-spin" />
-            <span>Loading news...</span>
-          </div>
-        ) : error ? (
-          <div className="py-12 text-center text-muted-foreground">
-            <p className="text-destructive">Failed to load news. Please try again.</p>
-          </div>
-        ) : (
-        <div className="grid gap-6 lg:grid-cols-3">
-          {posts.map((p) => (
-            <Card key={p.id} className="bg-background/60 backdrop-blur supports-backdrop-filter:bg-background/50">
-              <CardHeader>
-                <CardTitle>{p.title}</CardTitle>
-                <CardDescription>{p.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button asChild variant="ghost" shape="pill" className="justify-between">
-                  <Link href={`/news/${p.id}`}>
-                    Learn more
-                    <ArrowRightIcon className="size-4 text-muted-foreground" />
+    <div className="w-full">
+      <PageIntro
+        label="// news"
+        title="What's new at TechOn Skills."
+        description="Announcements, new course launches and batch updates."
+      />
+      <section className="py-14 sm:py-20">
+        <div className={siteContainer}>
+          {loading ? (
+            <p className="text-muted-foreground font-mono text-xs">loading news…</p>
+          ) : error ? (
+            <p className="text-destructive text-sm">Couldn&apos;t load news. Please refresh the page.</p>
+          ) : posts.length === 0 ? (
+            <p className="text-muted-foreground border-border border-y py-10 text-sm">No news yet. Check back soon.</p>
+          ) : (
+            <ul className="border-border border-t">
+              {posts.map((p, i) => (
+                <li key={p.id} className="border-border border-b">
+                  <Link
+                    href={`${CONFIG.ROUTES.PUBLIC.NEWS}/${p.id}`}
+                    className="group grid gap-3 py-7 sm:grid-cols-[3rem_minmax(0,1fr)_1.5rem] sm:items-center sm:gap-8"
+                  >
+                    <span className="text-muted-foreground font-mono text-[10px]">N.{String(i + 1).padStart(2, "0")}</span>
+                    <div className="min-w-0">
+                      {p.createdAt && (
+                        <div className="text-muted-foreground font-mono text-[10px]">{formatDateLong(p.createdAt)}</div>
+                      )}
+                      <h2 className="mt-1.5 text-xl font-semibold tracking-tight transition-colors group-hover:text-(--site-accent) sm:text-2xl">
+                        {p.title}
+                      </h2>
+                      <p className="text-muted-foreground mt-2 line-clamp-2 max-w-2xl text-sm leading-relaxed">{p.description}</p>
+                    </div>
+                    <ArrowRightIcon className="hidden size-4 transition-transform group-hover:translate-x-1 sm:block" aria-hidden />
                   </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-        )}
-      </div>
+      </section>
     </div>
   )
 }
-

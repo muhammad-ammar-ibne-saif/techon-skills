@@ -1,14 +1,12 @@
 "use client"
 
-import Link from "next/link"
 import Image from "next/image"
 import { useQuery } from "@apollo/client/react"
-import { ArrowLeftIcon, CalendarIcon, Loader2Icon, UserIcon } from "lucide-react"
 
-import { Button } from "@/lib/ui/useable-components/button"
-import { Card, CardContent } from "@/lib/ui/useable-components/card"
+import { cn, formatDateLong, getImageSrc, isBackendImageUrl } from "@/lib/helpers"
 import { GET_ARTICLE_BY_SLUG } from "@/lib/graphql"
-import { formatDateLong, getImageSrc } from "@/lib/helpers"
+import { siteContainer } from "@/lib/ui/useable-components/site-chrome/ui"
+import { PostLayout, PostNotFound, postProse } from "@/lib/ui/useable-components/site-chrome/post-layout"
 import { CONFIG } from "@/utils/constants"
 
 type ArticleDetail = {
@@ -25,44 +23,26 @@ type ArticleDetail = {
   createdAt: string
 }
 
+const ARTICLES = CONFIG.ROUTES.PUBLIC.ARTICLES
+
 export const PublicArticleDetailScreen = ({ slug }: { slug: string }) => {
   const { data, loading, error } = useQuery<{ getArticleBySlug: ArticleDetail | null }>(GET_ARTICLE_BY_SLUG, {
     variables: { slug },
   })
-
   const article = data?.getArticleBySlug
 
   if (loading) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center px-4 py-12">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader2Icon className="size-6 animate-spin" />
-          <span>Loading...</span>
-        </div>
-      </div>
-    )
+    return <div className={cn(siteContainer, "text-muted-foreground py-24 font-mono text-xs")}>loading article…</div>
   }
 
   if (error || !article) {
     return (
-      <div className="w-full px-4 py-12">
-        <div className="mx-auto max-w-2xl">
-          <Card className="bg-background/70 backdrop-blur">
-            <CardContent className="p-6">
-              <h1 className="text-xl font-semibold">Article not found</h1>
-              <p className="text-muted-foreground mt-2 text-sm">
-                This article may be unpublished or the link is incorrect.
-              </p>
-              <Button asChild variant="brand-secondary" shape="pill" className="mt-4">
-                <Link href={CONFIG.ROUTES.PUBLIC.ARTICLES ?? "/articles"} className="gap-2">
-                  <ArrowLeftIcon className="size-4" />
-                  Back to articles
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <PostNotFound
+        title="Article not found"
+        text="This article may be unpublished or the link is incorrect."
+        backHref={ARTICLES}
+        backLabel="Back to articles"
+      />
     )
   }
 
@@ -77,64 +57,30 @@ export const PublicArticleDetailScreen = ({ slug }: { slug: string }) => {
     dateModified: article.createdAt,
   }
 
+  const meta = [
+    "article",
+    formatDateLong(article.publishedAt ?? article.createdAt),
+    article.authorName && `by ${article.authorName}`,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+
   return (
-    <article className="w-full px-4 py-12 sm:px-6 lg:px-8 2xl:px-10">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <div className="mx-auto max-w-3xl space-y-8">
-        <div>
-          <Button asChild variant="ghost" size="sm" className="mb-6 -ml-2">
-            <Link href={CONFIG.ROUTES.PUBLIC.ARTICLES ?? "/articles"} className="gap-2">
-              <ArrowLeftIcon className="size-4" />
-              Back to articles
-            </Link>
-          </Button>
+    <PostLayout backHref={ARTICLES} backLabel="all articles" meta={meta} title={article.title} intro={article.excerpt || undefined}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      {article.coverImage && (
+        <div className="border-border bg-muted/40 relative mb-10 aspect-video w-full overflow-hidden rounded-lg border">
+          <Image
+            src={getImageSrc(article.coverImage) || article.coverImage}
+            alt=""
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 768px"
+            unoptimized={isBackendImageUrl(article.coverImage)}
+          />
         </div>
-
-        <header className="space-y-4">
-          <h1 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-            {article.title}
-          </h1>
-          {(article.authorName || article.publishedAt) && (
-            <div className="flex flex-wrap items-center gap-4 text-muted-foreground text-sm">
-              {article.authorName && (
-                <span className="flex items-center gap-1">
-                  <UserIcon className="size-4" />
-                  {article.authorName}
-                </span>
-              )}
-              {article.publishedAt && (
-                <span className="flex items-center gap-1">
-                  <CalendarIcon className="size-4" />
-                  {formatDateLong(article.publishedAt ?? article.createdAt)}
-                </span>
-              )}
-            </div>
-          )}
-          {article.excerpt && (
-            <p className="text-muted-foreground text-lg leading-7">{article.excerpt}</p>
-          )}
-        </header>
-
-        {article.coverImage && (
-          <div className="relative aspect-video w-full overflow-hidden rounded-2xl border bg-muted-surface">
-            <Image
-              src={getImageSrc(article.coverImage) || article.coverImage}
-              alt=""
-              fill
-              className="object-cover"
-              sizes="(max-width: 1024px) 100vw, 896px"
-            />
-          </div>
-        )}
-
-        <div
-          className="prose prose-neutral dark:prose-invert max-w-none prose-headings:font-semibold prose-p:leading-7 prose-a:text-(--brand-primary)"
-          dangerouslySetInnerHTML={{ __html: article.content || "" }}
-        />
-      </div>
-    </article>
+      )}
+      <div className={postProse} dangerouslySetInnerHTML={{ __html: article.content || "" }} />
+    </PostLayout>
   )
 }

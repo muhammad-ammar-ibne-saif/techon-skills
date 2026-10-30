@@ -4,6 +4,7 @@ export interface IUserProfileInfo {
     id: string;
     email: string;
     fullName?: string | null;
+    phoneNumber?: string | null;
     profilePicture?: string | null;
     role: UserRole;
     status: UserStatus;

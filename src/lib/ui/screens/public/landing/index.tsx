@@ -1,818 +1,608 @@
 "use client"
+
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import {
-  ActivityIcon,
-  ArrowRightIcon,
-  AwardIcon,
-  BriefcaseIcon,
-  CheckCircle2Icon,
-  ClipboardListIcon,
-  CodeIcon,
-  CompassIcon,
-  FileCheck2Icon,
-  GraduationCapIcon,
-  HandshakeIcon,
-  MessageCircleIcon,
-  RocketIcon,
-  SparklesIcon,
-  SmartphoneIcon,
-  StarsIcon,
-  StoreIcon,
-  WrenchIcon,
-} from "lucide-react"
-import { useEffect, useState } from "react"
+import { useQuery } from "@apollo/client/react"
+import { ArrowRightIcon, CheckIcon, ChevronRightIcon, StarIcon } from "lucide-react"
 
-import { Button } from "@/lib/ui/useable-components/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/lib/ui/useable-components/card"
-import { EnrollmentFormCard } from "@/lib/ui/screens/public/enrollment/enrollment-form-card"
-import { SimpleContactForm } from "@/lib/ui/screens/public/shared/simple-contact-form"
-import { cn, logger } from "@/lib/helpers"
+import { cn } from "@/lib/helpers"
+import { GET_PUBLIC_SITE_STATS } from "@/lib/graphql"
 import { useCourses } from "@/lib/providers/courses"
-import { CONFIG, SITE_PHONE_DISPLAY } from "@/utils/constants"
-import { LoggerLevel } from "@/utils/enums"
-import { COURSE_DISPLAY_BY_SLUG } from "@/utils/constants/course-display"
+import {
+  SectionLabel,
+  SectionTitle,
+  siteButton,
+  siteContainer,
+  siteDotGrid,
+} from "@/lib/ui/useable-components/site-chrome/ui"
+import { CONFIG, SITE_WHATSAPP_URL } from "@/utils/constants"
+import { FAQS } from "@/utils/constants/faqs"
+import { GOOGLE_RATING, GOOGLE_REVIEWS, GOOGLE_WRITE_REVIEW_URL } from "@/utils/constants/google-reviews"
+import type { ICourse } from "@/utils/interfaces"
 
-const FEATURED_COURSE_ICONS: Record<string, typeof CodeIcon> = {
-  code: CodeIcon,
-  smartphone: SmartphoneIcon,
-  wrench: WrenchIcon,
-  store: StoreIcon,
+const ROUTES = CONFIG.ROUTES.PUBLIC
+
+type PublicSiteStats = {
+  students: number
+  projectsMarked: number
+  mentors: number
+  courses: number
+  lowestCourseFee: number | null
+  currency: string | null
 }
 
-/** Per-course visual identity: gradient meshes + icon wells (landing featured grid). */
-const FEATURED_CARD_PALETTES = [
-  {
-    iconBg: "bg-gradient-to-br from-[#4fc3e8] via-[#2a9fd4] to-[#135a8c]",
-    iconShadow: "shadow-[0_12px_40px_-8px_rgba(79,195,232,0.55)]",
-    mesh: "bg-[radial-gradient(ellipse_120%_80%_at_0%_-20%,rgba(79,195,232,0.35),transparent_50%),radial-gradient(ellipse_100%_60%_at_100%_100%,rgba(255,138,61,0.18),transparent_55%)]",
-    hoverRing: "group-hover:shadow-[0_0_0_1px_rgba(79,195,232,0.35),0_24px_48px_-12px_rgba(27,119,182,0.35)]",
-  },
-  {
-    iconBg: "bg-gradient-to-br from-violet-500 via-fuchsia-500 to-purple-700",
-    iconShadow: "shadow-[0_12px_40px_-8px_rgba(139,92,246,0.5)]",
-    mesh: "bg-[radial-gradient(ellipse_120%_80%_at_100%_0%,rgba(167,139,250,0.3),transparent_50%),radial-gradient(ellipse_90%_50%_at_0%_100%,rgba(236,72,153,0.12),transparent_50%)]",
-    hoverRing: "group-hover:shadow-[0_0_0_1px_rgba(167,139,250,0.4),0_24px_48px_-12px_rgba(109,40,217,0.28)]",
-  },
-  {
-    iconBg: "bg-gradient-to-br from-slate-600 via-slate-700 to-slate-900",
-    iconShadow: "shadow-[0_12px_40px_-8px_rgba(71,85,105,0.55)]",
-    mesh: "bg-[radial-gradient(ellipse_100%_70%_at_50%_-10%,rgba(148,163,184,0.22),transparent_55%),radial-gradient(ellipse_80%_50%_at_100%_100%,rgba(14,165,233,0.12),transparent_50%)]",
-    hoverRing: "group-hover:shadow-[0_0_0_1px_rgba(148,163,184,0.35),0_24px_48px_-12px_rgba(15,23,42,0.4)]",
-  },
-  {
-    iconBg: "bg-gradient-to-br from-emerald-400 via-teal-500 to-emerald-800",
-    iconShadow: "shadow-[0_12px_40px_-8px_rgba(16,185,129,0.45)]",
-    mesh: "bg-[radial-gradient(ellipse_110%_70%_at_0%_0%,rgba(52,211,153,0.28),transparent_52%),radial-gradient(ellipse_90%_60%_at_100%_80%,rgba(20,184,166,0.15),transparent_50%)]",
-    hoverRing: "group-hover:shadow-[0_0_0_1px_rgba(52,211,153,0.35),0_24px_48px_-12px_rgba(5,150,105,0.28)]",
-  },
-] as const
-
-const PALETTE_INDEX_BY_SLUG: Record<string, number> = {
-  "web-development": 0,
-  "mobile-app-development": 1,
-  "software-engineering": 2,
-  ecommerce: 3,
-}
-
-function getFeaturedPalette(slug: string) {
-  const i = PALETTE_INDEX_BY_SLUG[slug]
-  return FEATURED_CARD_PALETTES[i ?? 0]!
-}
+/** FAQ entries (from the FAQ page) shown in the home page's short FAQ. */
+const HOME_FAQ_QUESTIONS = [
+  "How much do courses cost?",
+  "How are classes delivered?",
+  "Do you offer career support?",
+  "Can I get a refund if I change my mind?",
+]
 
 export const LandingPageScreen = () => {
-  const { featuredCourses: featuredFromHook } = useCourses()
-  const featuredCourses = featuredFromHook.map((c) => ({
-    ...c,
-    icon: FEATURED_COURSE_ICONS[c.icon] ?? CodeIcon,
-  }))
-  const [landingContactSent, setLandingContactSent] = useState(false)
-  const [enrollmentSent, setEnrollmentSent] = useState(false)
-
-  useEffect(() => {
-    // Smooth scrolling + reveal animations (no scroll-snap to avoid footer jump).
-    const root = document.documentElement
-    root.classList.add("scroll-smooth")
-
-    const revealEls = Array.from(
-      document.querySelectorAll<HTMLElement>("[data-reveal]")
-    )
-    for (const el of revealEls) {
-      el.classList.add("opacity-0", "translate-y-6")
-    }
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const el = entry.target as HTMLElement
-          if (entry.isIntersecting) {
-            el.classList.add("opacity-100", "translate-y-0")
-            el.classList.remove("opacity-0", "translate-y-6")
-          } else {
-            // fade-out when leaving viewport
-            el.classList.add("opacity-0", "translate-y-6")
-            el.classList.remove("opacity-100", "translate-y-0")
-          }
-        }
-      },
-      { threshold: 0.12, rootMargin: "-10% 0px -10% 0px" }
-    )
-    for (const el of revealEls) io.observe(el)
-    return () => {
-      io.disconnect()
-      root.classList.remove("scroll-smooth")
-    }
-  }, [])
+  const { courses, loading: coursesLoading } = useCourses()
+  const { data: statsData } = useQuery<{ publicSiteStats: PublicSiteStats }>(GET_PUBLIC_SITE_STATS)
+  const stats = statsData?.publicSiteStats ?? null
 
   return (
     <div className="w-full min-w-0">
-      <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute -top-32 left-1/2 h-144 w-240 -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(79,195,232,0.22),transparent_60%)] blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 h-112 w-md rounded-full bg-[radial-gradient(circle_at_center,rgba(242,140,40,0.16),transparent_65%)] blur-3xl" />
+      <Hero courses={courses} />
+      <BuildSection />
+      <TracksSection courses={courses} loading={coursesLoading} />
+      <MethodSection />
+      <ResultsSection stats={stats} />
+      <FeesAndFaqSection />
+    </div>
+  )
+}
+
+function Hero({ courses }: { courses: ICourse[] }) {
+  const sampleCourse = courses[0]?.title ?? "Full-Stack Web"
+  return (
+    <section id="top" className={cn("border-border/60 relative border-b", siteDotGrid)}>
+      <div className={cn(siteContainer, "grid items-center gap-12 py-16 sm:py-20 lg:grid-cols-[1.1fr_0.9fr] lg:py-24")}>
+        <div className="site-intro">
+          <SectionLabel>{"// learn. build. grow."}</SectionLabel>
+          <h1 className="mt-5 text-balance text-5xl font-semibold leading-[1.02] tracking-[-0.045em] sm:text-6xl lg:text-[4.25rem]">
+            Learn it. Build it. Get <span className="text-(--site-accent)">marked</span> on it.
+          </h1>
+          <p className="text-muted-foreground mt-6 max-w-md text-[15px] leading-relaxed">
+            Courses in AI, data, web and mobile where every lesson ends in a graded project and a mentor review.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <a href="#courses" className={siteButton.primary}>
+              Browse courses <ArrowRightIcon className="size-4" aria-hidden />
+            </a>
+            <a
+              href={`${SITE_WHATSAPP_URL}?text=${encodeURIComponent("Hi, I'd like a free advisor call about your courses.")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={siteButton.outline}
+            >
+              Free advisor call
+            </a>
+          </div>
+          <ul className="text-muted-foreground mt-6 flex flex-wrap gap-x-5 gap-y-1 font-mono text-[11px]">
+            {["graded projects", "mentor code review", "progress dashboard"].map((t) => (
+              <li key={t} className="flex items-center gap-1.5">
+                <CheckIcon className="size-3" aria-hidden /> {t}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <DashboardPreview courseTitle={sampleCourse} />
       </div>
+    </section>
+  )
+}
 
-      <div className="w-full min-w-0">
-        <section
-          id="hero"
-          data-reveal
-          className="scroll-mt-24 transition-all duration-700 ease-out will-change-transform"
-        >
-          <div className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8 2xl:px-10">
-            <div className="mx-auto max-w-6xl">
-              <div className="grid gap-10 lg:grid-cols-[1.25fr_0.75fr] lg:items-center">
-                <div className="space-y-6">
-                  <div className="inline-flex items-center gap-2 rounded-full border bg-background/70 px-3 py-1 text-xs font-medium">
-                    <CheckCircle2Icon className="size-3.5 text-(--brand-highlight)" />
-                   Structured courses. Real projects. Marks that mean something.
-                  </div>
-
-                  <h1 className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
-                    Learn skills that {" "}
-                    <span className="bg-[linear-gradient(135deg,var(--brand-secondary),var(--brand-highlight))] bg-clip-text text-transparent">
-                      convert
-                    </span>{" "}
-                    into outcomes.
-                  </h1>
-
-                  <p className="text-muted-foreground max-w-2xl text-pretty text-lg leading-8">
-                    Structured courses in AI , Machine Learning, Data Science, Web Development, Mobile App Development, Software Engineering, Digital Marketing and Ecommerce (Shopify, WordPress, Wix) - built by Cloudrika Technologies. Learn through real assignments, get graded, track your progress on a dashboard built for accountability.
-                  </p>
-
-                  <div className="border-border/60 bg-background/40 rounded-2xl border p-4 text-sm">
-                    <div className="font-semibold">Career support</div>
-                    <div className="text-muted-foreground mt-1 leading-7">
-                      We help deserving candidates start their careers by connecting them to job opportunities after consistent
-                      performance and strong project submissions.
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-                    <Button
-                      asChild
-                      size="xl"
-                      shape="pill"
-                      className="max-sm:min-h-16 max-sm:w-full max-sm:px-8 max-sm:text-lg max-sm:has-[>svg]:px-7"
-                    >
-                      <Link href="https://wa.me/923257720992?text=Hi,%20I%20want%20a%20career%20diagnostic.">
-                        Get Career Diagnostic
-                        <ArrowRightIcon className="size-4 max-sm:size-5" />
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline" size="xl" shape="pill" className="hidden sm:inline-flex">
-                      <Link href="/courses">Explore 2026 Programs</Link>
-                    </Button>
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="xl"
-                      shape="pill"
-                      className="max-sm:min-h-16 max-sm:w-full max-sm:px-8 max-sm:text-lg"
-                    >
-                      <Link href={CONFIG.ROUTES.PUBLIC.ENROLLMENT}>Enroll now</Link>
-                    </Button>
-                    
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {[
-                      { label: "Agency-Grade", value: "Code Reviews" },
-                      { label: "Live Deployment", value: "Production" },
-                      { label: "Tracked Marks", value: "Accountability" },
-                    ].map((s) => (
-                      <div key={s.label} className="rounded-2xl border bg-background/60 p-4">
-                        <div className="text-xl font-semibold">{s.value}</div>
-                        <div className="text-muted-foreground text-xs">{s.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <Card className="bg-background/60 backdrop-blur supports-backdrop-filter:bg-background/50">
-                  <CardHeader>
-                    <CardTitle>What you’ll build</CardTitle>
-                    <CardDescription>Portfolio-ready projects and real workflows.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3 text-sm">
-                    {[
-                      "Production Next.js & React Native Apps",
-                      "AI Agents, RAG Pipelines & FastAPI Backends",
-                      "Figma Design Systems & Conversion UIs",
-                      "Live Cloud Deployments (Vercel, Docker, AWS)",
-                    ].map((t) => (
-                      <div key={t} className="flex items-start gap-2">
-                        <CheckCircle2Icon className="mt-0.5 size-4 text-(--brand-highlight)" />
-                        <div>{t}</div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+/** Illustration of the student dashboard (sample data, labelled as such). */
+function DashboardPreview({ courseTitle }: { courseTitle: string }) {
+  const progress = 62
+  const r = 22
+  const circumference = 2 * Math.PI * r
+  return (
+    <div className="site-hero-art relative mx-auto w-full max-w-md lg:ml-auto" aria-hidden>
+      <div className="border-border bg-card rounded-xl border shadow-[0_24px_60px_-28px_rgba(15,15,40,0.35)]">
+        <div className="border-border flex items-center gap-1.5 border-b px-4 py-2.5">
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="bg-muted-foreground/25 size-2 rounded-full" />
+          ))}
+          <span className="text-muted-foreground ml-2 font-mono text-[10px]">dashboard · sample view</span>
+        </div>
+        <div className="flex items-center gap-4 px-5 py-5">
+          <svg viewBox="0 0 56 56" className="size-14 -rotate-90">
+            <circle cx="28" cy="28" r={r} fill="none" strokeWidth="5" className="stroke-muted" />
+            <circle
+              cx="28"
+              cy="28"
+              r={r}
+              fill="none"
+              strokeWidth="5"
+              strokeLinecap="round"
+              stroke="var(--site-accent)"
+              strokeDasharray={circumference}
+              strokeDashoffset={circumference * (1 - progress / 100)}
+            />
+            <text
+              x="28"
+              y="32"
+              textAnchor="middle"
+              className="fill-foreground text-[11px] font-semibold"
+              transform="rotate(90 28 28)"
+            >
+              {progress}%
+            </text>
+          </svg>
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold">{courseTitle}</div>
+            <div className="text-muted-foreground font-mono text-[10px]">Module 4 of 8</div>
           </div>
-        </section>
-
-        <section
-          id="courses"
-          data-reveal
-          className="scroll-mt-24 overflow-x-visible transition-all duration-700 ease-out will-change-transform"
-        >
-          <div className="px-4 py-12 sm:px-6 sm:py-14 lg:px-8 2xl:px-10">
-            <div className="mx-auto min-w-0 max-w-6xl space-y-8 overflow-visible">
-              <div className="space-y-2">
-                <div className="text-sm font-semibold text-secondary">Featured</div>
-                <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-                  Select your track, built for high-paying roles and dollar retainers.
-                </h2>
-                <p className="text-muted-foreground max-w-2xl">
-                  Every course follows an active execution path: Learn → Practice → Submit → Graded Feedback.
-                </p>
-              </div>
-
-              <div
-                className={cn(
-                  "grid gap-x-7 gap-y-10 overflow-visible py-1 sm:gap-x-8 sm:gap-y-11",
-                  "grid-cols-[repeat(auto-fit,minmax(min(100%,18.5rem),1fr))]",
-                )}
-              >
-                {featuredCourses.map((c, idx) => {
-                  const palette = getFeaturedPalette(c.slug)
-                  const highlight = COURSE_DISPLAY_BY_SLUG[c.slug]?.highlight
-                  logger({ type: LoggerLevel.DEBUG, message: JSON.stringify(c.bullets), })
-                  return (
-                    <Link
-                      key={c.slug}
-                      href={`/courses/${c.slug}`}
-                      className={cn(
-                        "group relative isolate block h-full min-h-76 min-w-0 rounded-[1.35rem] outline-none focus-visible:ring-2 focus-visible:ring-(--brand-highlight) focus-visible:ring-offset-2",
-                        "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-5 motion-safe:duration-700",
-                        "w-[calc(100%+0.875rem)] max-w-none -mx-1.75 justify-self-stretch",
-                        "transition-[transform,box-shadow] duration-300 hover:z-50!",
-                      )}
-                      style={{ animationDelay: `${120 + idx * 90}ms`, zIndex: 10 + idx }}
-                    >
-                      {/* Ambient glow on hover */}
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "pointer-events-none absolute -inset-0.5 rounded-[1.4rem] opacity-0 blur-md transition-all duration-500 ease-out",
-                          "bg-linear-to-br from-sky-400/30 via-transparent to-orange-400/25",
-                          "group-hover:opacity-100 group-hover:blur-xl",
-                        )}
-                      />
-                      <article
-                        className={cn(
-                          "relative flex h-full min-h-76 flex-col overflow-hidden rounded-[1.35rem] border border-border/70",
-                          "bg-background/85 backdrop-blur-xl supports-backdrop-filter:bg-background/75",
-                          "shadow-[0_4px_6px_-1px_rgba(0,0,0,0.06),0_12px_24px_-8px_rgba(7,26,43,0.12)]",
-                          "transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                          "group-hover:-translate-y-2 group-hover:border-(--brand-highlight)/25",
-                          palette.hoverRing,
-                        )}
-                      >
-                        {/* Mesh + shine sweep */}
-                        <div
-                          className={cn(
-                            "pointer-events-none absolute inset-0 opacity-90 transition-opacity duration-500 group-hover:opacity-100",
-                            palette.mesh,
-                          )}
-                        />
-                        <div
-                          className="pointer-events-none absolute inset-0 translate-x-[-120%] bg-linear-to-r from-transparent via-white/25 to-transparent opacity-0 transition-all duration-700 ease-out group-hover:translate-x-[120%] group-hover:opacity-100 dark:via-white/10"
-                          aria-hidden
-                        />
-
-                        <div className="relative flex flex-1 flex-col p-6 sm:p-7">
-                          <div className="mb-5 flex gap-5">
-                            <div className="relative shrink-0">
-                              <div
-                                className={cn(
-                                  "flex size-19 items-center justify-center rounded-2xl text-white",
-                                  "ring-4 ring-white/60 dark:ring-white/10",
-                                  "transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.06] group-hover:-rotate-2",
-                                  palette.iconBg,
-                                  palette.iconShadow,
-                                )}
-                              >
-                                <c.icon className="size-[2.1rem] drop-shadow-md" strokeWidth={1.65} aria-hidden />
-                              </div>
-                            </div>
-                            <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
-                              {highlight ? (
-                                <span className="w-fit rounded-full border border-(--brand-highlight)/25 bg-(--brand-highlight)/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-(--brand-secondary)">
-                                  {highlight}
-                                </span>
-                              ) : null}
-                              <h3 className="text-[1.05rem] font-bold leading-snug tracking-tight text-foreground sm:text-lg">
-                                {c.title}
-                              </h3>
-                            </div>
-                          </div>
-
-                          <p className="text-muted-foreground mb-5 line-clamp-3 text-sm leading-relaxed">
-                            {c.description}
-                          </p>
-
-                          <ul className="mb-6 flex flex-1 flex-col gap-3">
-                            {c.bullets.map((b) => (
-                              <li key={b} className="flex gap-3 text-sm leading-snug">
-                                <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-(--brand-highlight)/12 text-(--brand-highlight) ring-1 ring-(--brand-highlight)/20">
-                                  <CheckCircle2Icon className="size-3.5" strokeWidth={2.25} aria-hidden />
-                                </span>
-                                <span className="min-w-0 text-foreground/90">{b}</span>
-                              </li>
-                            ))}
-                          </ul>
-
-                          <div className="mt-auto flex items-center justify-between border-t border-border/60 pt-5">
-                            <span className="text-sm font-semibold tracking-tight text-foreground">
-                              View details
-                            </span>
-                            <span className="flex size-9 items-center justify-center rounded-full bg-(--brand-primary)/5 text-(--brand-secondary) transition-all duration-300 group-hover:bg-(--brand-secondary) group-hover:text-white group-hover:shadow-md">
-                              <ArrowRightIcon
-                                className="size-4 transition-transform duration-300 ease-out group-hover:translate-x-0.5"
-                                aria-hidden
-                              />
-                            </span>
-                          </div>
-                        </div>
-                      </article>
-                    </Link>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section
-          id="why"
-          data-reveal
-          className="scroll-mt-24 transition-all duration-700 ease-out will-change-transform"
-        >
-          <div className="relative px-4 py-16 sm:px-6 sm:py-20 lg:px-8 2xl:px-10">
-            <div className="pointer-events-none absolute inset-0 -z-10">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(27,119,182,0.18),transparent_55%)]" />
-              <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent,rgba(0,0,0,0.22))]" />
-            </div>
-
-            <div className="mx-auto max-w-6xl space-y-10">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 rounded-full border bg-background/60 px-3 py-1 text-xs font-semibold">
-                  <SparklesIcon className="size-3.5 text-(--brand-highlight)" />
-                  Why TechOn Skills
-                </div>
-                <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-                  A smooth learning loop that makes you unstoppable.
-                </h2>
-                <p className="text-muted-foreground max-w-3xl text-pretty">
-                  We built the platform around human psychology: small wins, visible progress, and momentum that keeps you
-                  showing up daily.
-                </p>
-              </div>
-
-              <div className="grid gap-6 lg:grid-cols-3">
-                {[
-                  {
-                    title: "Structured lessons",
-                    description: "Focused modules designed to avoid burnout while building core technical skills.",
-                    icon: GraduationCapIcon,
-                  },
-                  {
-                    title: "Graded Submissions",
-                    description: "Submit code, receive specific scoring and feedback on every assignment to see progress regularly.",
-                    icon: FileCheck2Icon,
-                  },
-                  {
-                    title: "Career & Retainer Support",
-                    description: "Top candidates get matched with production projects and client acquisition guidance.",
-                    icon: BriefcaseIcon,
-                  },
-                ].map((f) => (
-                  <div
-                    key={f.title}
-                    className="rounded-3xl bg-[linear-gradient(135deg,rgba(79,195,232,0.30),rgba(242,140,40,0.14),transparent_70%)] p-px transition-all hover:-translate-y-0.5 hover:shadow-xl"
-                  >
-                    <Card className="bg-background/70 backdrop-blur supports-backdrop-filter:bg-background/60 rounded-3xl">
-                      <CardHeader className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <span className="bg-(--brand-primary) text-(--text-on-dark) inline-flex size-10 items-center justify-center rounded-2xl">
-                            <f.icon className="size-5" />
-                          </span>
-                          <CardTitle className="text-lg">{f.title}</CardTitle>
-                        </div>
-                        <CardDescription className="text-sm leading-7">{f.description}</CardDescription>
-                      </CardHeader>
-                    </Card>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid gap-6 lg:grid-cols-[1.3fr_0.9fr] lg:items-stretch">
-                <Card className="bg-background/60 backdrop-blur supports-backdrop-filter:bg-background/50">
-                  <CardHeader>
-                    <CardTitle>How the flow works</CardTitle>
-                    <CardDescription>Simple, repeatable, addictive progress.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid gap-3 sm:grid-cols-3">
-                    {[
-                      { t: "Learn", d: "Short lesson + examples", icon: StarsIcon },
-                      { t: "Practice", d: "Guided tasks & projects", icon: WrenchIcon },
-                      { t: "Submit", d: "Marks + feedback loop", icon: AwardIcon },
-                    ].map((s) => (
-                      <div key={s.t} className="rounded-2xl border bg-background/40 p-4">
-                        <div className="flex items-center gap-2">
-                          <s.icon className="size-4 text-(--brand-highlight)" />
-                          <div className="font-semibold">{s.t}</div>
-                        </div>
-                        <div className="text-muted-foreground mt-1 text-sm leading-6">{s.d}</div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-background/60 backdrop-blur supports-backdrop-filter:bg-background/50">
-                  <CardHeader>
-                    <CardTitle>What makes people finish</CardTitle>
-                    <CardDescription>Designed to keep you moving.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3 text-sm">
-                    {[
-                      "Visible progress (marks) creates momentum",
-                      "Small milestones prevent overwhelm",
-                      "Projects build confidence faster than theory",
-                    ].map((t) => (
-                      <div key={t} className="flex items-start gap-2">
-                        <CheckCircle2Icon className="mt-0.5 size-4 text-(--brand-highlight)" />
-                        <div className="text-muted-foreground leading-7">{t}</div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section
-          id="testimonials"
-          data-reveal
-          className="scroll-mt-24 transition-all duration-700 ease-out will-change-transform"
-        >
-          <div className="relative px-4 py-16 sm:px-6 sm:py-20 lg:px-8 2xl:px-10">
-            <div className="pointer-events-none absolute inset-0 -z-10">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(79,195,232,0.14),transparent_55%)]" />
-            </div>
-            <div className="mx-auto max-w-6xl">
-              <div className="mb-10 flex flex-col gap-6 lg:mb-14 lg:flex-row lg:items-end lg:justify-between lg:gap-12">
-                <div className="max-w-2xl space-y-4">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-(--brand-highlight)/20 bg-(--brand-highlight)/10 px-3 py-1 text-xs font-semibold text-(--brand-secondary) dark:text-(--brand-highlight)">
-                    <SparklesIcon className="size-3.5 shrink-0 text-(--brand-highlight)" aria-hidden />
-                    Outcomes
-                  </div>
-                  <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl lg:text-[2.5rem] lg:leading-tight">
-                    Built to upgrade you ,  fast.
-                  </h2>
-                </div>
-                <p className="text-muted-foreground max-w-xl text-pretty text-base leading-relaxed  lg:pb-1 lg:text-[1.0625rem] lg:leading-8">
-                  You’ll build proof, not just theory. Your dashboard keeps you accountable with assignments, submissions, and marks ,  so momentum stays visible week after week.
-                </p>
-              </div>
-
-              <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
-                {[
-                  {
-                    title: "Clear roadmap",
-                    description: "Always know the next lesson and the next win ,  no guessing, no stalled progress.",
-                    icon: CompassIcon,
-                    accent: "from-sky-500/15 to-transparent",
-                  },
-                  {
-                    title: "Portfolio ready",
-                    description: "Ship real projects you can talk through in interviews ,  not “tutorial clones” nobody remembers.",
-                    icon: RocketIcon,
-                    accent: "from-orange-500/12 to-transparent",
-                  },
-                  {
-                    title: "Career lift",
-                    description: "Strong consistency + standout submissions can unlock introductions when you’re ready to step up.",
-                    icon: HandshakeIcon,
-                    accent: "from-emerald-500/12 to-transparent",
-                  },
-                ].map((t, idx) => (
-                  <div
-                    key={t.title}
-                    className={cn(
-                      "group relative overflow-hidden rounded-2xl border border-border/80 bg-card/90 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-(--brand-highlight)/35 hover:shadow-lg",
-                      "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-5 motion-safe:duration-700",
-                    )}
-                    style={{ animationDelay: `${120 + idx * 90}ms` }}
-                  >
-                    <div
-                      className={cn(
-                        "pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100",
-                        "bg-linear-to-br",
-                        t.accent
-                      )}
-                      aria-hidden
-                    />
-                    <div className="relative flex flex-col gap-4 p-6 sm:p-7">
-                      <div className="flex size-12 items-center justify-center rounded-2xl bg-(--brand-primary)/8 text-(--brand-secondary) ring-1 ring-border/60 transition-transform duration-300 group-hover:scale-105 group-hover:bg-(--brand-secondary)/10 dark:bg-(--brand-highlight)/10 dark:text-(--brand-highlight)">
-                        <t.icon className="size-6" strokeWidth={1.75} aria-hidden />
-                      </div>
-                      <div className="space-y-2">
-                        <h3 className="text-lg font-semibold tracking-tight">{t.title}</h3>
-                        <p className="text-muted-foreground text-sm leading-relaxed sm:text-[0.9375rem] sm:leading-7">
-                          {t.description}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div
-                aria-label="How we support your progress"
-                className="mt-10 grid gap-4 sm:mt-12 sm:grid-cols-3 sm:gap-5"
-              >
-                {[
-                  {
-                    label: "Marks tracking",
-                    headline: "See progress clearly",
-                    hint: "Scores and feedback stay in one place so you always know what to improve next.",
-                    icon: ActivityIcon,
-                  },
-                  {
-                    label: "Assignments",
-                    headline: "Build discipline",
-                    hint: "Regular deadlines turn learning into a habit ,  the same rhythm real teams expect.",
-                    icon: ClipboardListIcon,
-                  },
-                  {
-                    label: "Career support",
-                    headline: "For deserving candidates",
-                    hint: "When your work consistently stands out, we help you take the next professional step.",
-                    icon: BriefcaseIcon,
-                  },
-                ].map((s, idx) => (
-                  <div
-                    key={s.label}
-                    className={cn(
-                      "flex gap-4 rounded-2xl border border-border/70 bg-background/75 p-5 shadow-sm backdrop-blur-sm supports-backdrop-filter:bg-background/65 sm:flex-col sm:p-6",
-                      "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-5 motion-safe:duration-700",
-                    )}
-                    style={{ animationDelay: `${420 + idx * 90}ms` }}
-                  >
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-(--brand-secondary)/12 text-(--brand-secondary) dark:bg-(--brand-highlight)/12 dark:text-(--brand-highlight)">
-                      <s.icon className="size-5" strokeWidth={2} aria-hidden />
-                    </div>
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <div className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">{s.label}</div>
-                      <div className="text-lg font-semibold leading-snug tracking-tight">{s.headline}</div>
-                      <p className="text-muted-foreground text-sm leading-relaxed">{s.hint}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section
-          id="talk-to-us"
-          data-reveal
-          className="scroll-mt-24 transition-all duration-700 ease-out will-change-transform"
-        >
-          <div className="relative px-4 py-16 sm:px-6 sm:py-20 lg:px-8 2xl:px-10">
-            <div className="pointer-events-none absolute inset-0 -z-10">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(242,140,40,0.10),transparent_55%)]" />
-            </div>
-            <div className="mx-auto max-w-6xl space-y-8">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 rounded-full border bg-background/60 px-3 py-1 text-xs font-semibold">
-                  <MessageCircleIcon className="size-3.5 text-(--brand-highlight)" />
-                  Talk to us
-                </div>
-                <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-                  Reach the team
-                </h2>
-                <p className="text-muted-foreground max-w-3xl text-pretty">
-                  Call, email, or visit ,  we’ll help you choose the right course and explain how the program works.
-                </p>
-              </div>
-              <Card className="bg-background/60 backdrop-blur supports-backdrop-filter:bg-background/50">
-                <CardHeader>
-                  <CardTitle>Contact details</CardTitle>
-                  <CardDescription>
-                    We’ll help you choose the right course and explain the flow.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  {[
-                    { k: "Phone", v: SITE_PHONE_DISPLAY },
-                    { k: "Email", v: "info@techonskills.com" },
-                    { k: "Address", v: "8th Floor, Office No. 812, Al Hafeez Executive Towers, Gulberg II, Firdous Market, Lahore, Punjab, Pakistan" },
-                  ].map((r) => (
-                    <div key={r.k} className="rounded-2xl border bg-background/40 p-4">
-                      <div className="text-muted-foreground text-xs">{r.k}</div>
-                      <div className="mt-1 font-semibold">{r.v}</div>
-                    </div>
-                  ))}
-                  <div className="rounded-2xl border bg-background/40 p-4">
-                    <div className="text-muted-foreground text-xs">Tip</div>
-                    <div className="mt-1 leading-7">
-                      Mention your target course and your current level ,  we’ll suggest the fastest path.
-                    </div>
-                  </div>
-                  <Button asChild variant="outline" shape="pill" className="w-full sm:w-auto">
-                    <Link href={CONFIG.ROUTES.PUBLIC.ENROLLMENT}>Go to enrollment page</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </section>
-
-        <section
-          id="enrollment"
-          data-reveal
-          className="scroll-mt-24 transition-all duration-700 ease-out will-change-transform"
-        >
-          <div className="relative px-4 py-16 sm:px-6 sm:py-20 lg:px-8 2xl:px-10">
-            <div className="pointer-events-none absolute inset-0 -z-10">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(79,195,232,0.12),transparent_55%)]" />
-            </div>
-            <div className="mx-auto max-w-6xl space-y-8">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 rounded-full border bg-background/60 px-3 py-1 text-xs font-semibold">
-                  <GraduationCapIcon className="size-3.5 text-(--brand-highlight)" />
-                  Enrollment
-                </div>
-                <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-                  Apply and pay your first fee
-                </h2>
-                <p className="text-muted-foreground max-w-3xl text-pretty">
-                  Select course(s), review the first-fee total, upload your payment screenshot, and submit. Your account is
-                  created pending admin approval.
-                </p>
-              </div>
-              <div className="rounded-3xl bg-[linear-gradient(135deg,rgba(70,208,255,0.22),rgba(255,138,61,0.12),transparent_70%)] p-px">
-                <Card className="bg-background/80 backdrop-blur supports-backdrop-filter:bg-background/70 rounded-3xl border-0 shadow-sm">
-                  <CardContent className="p-6 sm:p-8">
-                    <EnrollmentFormCard
-                      variant="landing"
-                      sent={enrollmentSent}
-                      onSuccess={() => setEnrollmentSent(true)}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section
-          id="after-enrollment"
-          data-reveal
-          className="scroll-mt-24 transition-all duration-700 ease-out will-change-transform"
-        >
-          <div className="relative px-4 py-14 sm:px-6 sm:py-16 lg:px-8 2xl:px-10">
-            <div className="pointer-events-none absolute inset-0 -z-10">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(27,119,182,0.10),transparent_60%)]" />
-            </div>
-            <div className="mx-auto max-w-6xl space-y-8">
-              <div className="space-y-2 text-center sm:text-left">
-                <div className="mx-auto inline-flex items-center gap-2 rounded-full border bg-background/60 px-3 py-1 text-xs font-semibold sm:mx-0">
-                  <SparklesIcon className="size-3.5 text-(--brand-highlight)" />
-                  Before you send a message
-                </div>
-                <h2 className="text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
-                  You’re one step away from a real training rhythm
-                </h2>
-                <p className="text-muted-foreground mx-auto max-w-3xl text-pretty sm:mx-0">
-                  Most students who do well here commit to the same loop: short lessons → hands-on tasks → submissions → clear
-                  marks. If that sounds like how you learn best, you’re in the right place.
-                </p>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {[
-                  {
-                    title: "Structured path",
-                    body: "No guesswork about what to study next ,  follow the track and stack skills week by week.",
-                    icon: StarsIcon,
-                  },
-                  {
-                    title: "Proof in your portfolio",
-                    body: "Build projects you can show in interviews, not just tick boxes on a checklist.",
-                    icon: AwardIcon,
-                  },
-                  {
-                    title: "Marks you can trust",
-                    body: "See feedback and scores on submissions so you always know where you stand.",
-                    icon: FileCheck2Icon,
-                  },
-                  {
-                    title: "Career lift for top work",
-                    body: "Consistent performance and strong projects can unlock introductions when you’re ready.",
-                    icon: BriefcaseIcon,
-                  },
-                ].map((item) => (
-                  <Card
-                    key={item.title}
-                    className="bg-background/65 text-left backdrop-blur supports-backdrop-filter:bg-background/55"
-                  >
-                    <CardHeader className="space-y-3 pb-2">
-                      <span className="bg-(--brand-primary)/10 text-(--brand-secondary) inline-flex size-10 items-center justify-center rounded-xl">
-                        <item.icon className="size-5" aria-hidden />
-                      </span>
-                      <CardTitle className="text-base leading-snug">{item.title}</CardTitle>
-                      <CardDescription className="text-sm leading-relaxed">{item.body}</CardDescription>
-                    </CardHeader>
-                  </Card>
-                ))}
-              </div>
-
-              <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
-                <Button asChild variant="brand-secondary" shape="pill" className="w-full sm:w-auto">
-                  <Link href={CONFIG.ROUTES.PUBLIC.COURSES}>
-                    Browse all courses
-                    <ArrowRightIcon className="size-4" />
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" shape="pill" className="w-full sm:w-auto">
-                  <Link href={CONFIG.ROUTES.PUBLIC.FAQS}>Read FAQs</Link>
-                </Button>
-                <p className="text-muted-foreground w-full text-center text-sm sm:w-auto sm:flex-1 sm:text-left">
-                  Prefer WhatsApp or a quick call? Use the details in{" "}
-                  <Link href="#talk-to-us" className="text-(--brand-highlight) font-medium underline-offset-4 hover:underline">
-                    Talk to us
-                  </Link>{" "}
-                  above.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section
-          id="contact"
-          data-reveal
-          className="scroll-mt-24 transition-all duration-700 ease-out will-change-transform"
-        >
-          <div className="relative px-4 py-16 sm:px-6 sm:py-20 lg:px-8 2xl:px-10">
-            <div className="pointer-events-none absolute inset-0 -z-10">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(242,140,40,0.10),transparent_55%)]" />
-            </div>
-            <div className="mx-auto max-w-6xl space-y-8">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 rounded-full border bg-background/60 px-3 py-1 text-xs font-semibold">
-                  <MessageCircleIcon className="size-3.5 text-(--brand-highlight)" />
-                  Contact
-                </div>
-                <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-                  Send us a message
-                </h2>
-                <p className="text-muted-foreground max-w-3xl text-pretty">
-                  General questions only ,  no fee or payment required. For registration with fee proof, use{" "}
-                  <Link href="#enrollment" className="text-(--brand-highlight) font-medium underline-offset-4 hover:underline">
-                    Enrollment
-                  </Link>{" "}
-                  above.
-                </p>
-              </div>
-              <Card className="bg-background/60 backdrop-blur supports-backdrop-filter:bg-background/50">
-                <CardContent className="p-6 sm:p-8">
-                  <SimpleContactForm
-                    variant="page"
-                    sent={landingContactSent}
-                    onSuccess={() => setLandingContactSent(true)}
-                  />
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </section>
+        </div>
+        <ul className="border-border divide-border divide-y border-t text-xs">
+          {[
+            { t: "Routing and layouts", done: true },
+            { t: "API integration", done: true },
+            { t: "Project: deploy your app", done: false },
+          ].map((row) => (
+            <li
+              key={row.t}
+              className={cn(
+                "flex items-center justify-between px-5 py-2.5",
+                !row.done && "bg-(--site-accent)/8 font-medium"
+              )}
+            >
+              <span>{row.t}</span>
+              {row.done && <span className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400">done</span>}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="bg-foreground text-background absolute -right-3 bottom-10 w-52 rounded-lg px-3.5 py-3 shadow-xl sm:-right-8">
+        <div className="font-mono text-[9px] tracking-wider opacity-60">MENTOR REVIEW</div>
+        <div className="mt-1 text-[11px] leading-snug">
+          &ldquo;Clean structure. Add loading states, then ship it.&rdquo;
+        </div>
+      </div>
+      <div className="border-border bg-card absolute -bottom-9 left-4 flex items-center gap-3 rounded-lg border px-3 py-2 shadow-md">
+        <span className="font-mono text-xl font-semibold text-emerald-600 dark:text-emerald-400">86</span>
+        <span className="text-muted-foreground font-mono text-[9px] leading-tight">
+          MARK / 100
+          <br />
+          status: passed
+        </span>
       </div>
     </div>
   )
 }
 
+const BUILD_ITEMS = [
+  {
+    tag: "WEB & MOBILE",
+    title: "Production Next.js and React Native apps",
+    art: "browser",
+  },
+  { tag: "AI & ML", title: "AI agents and RAG pipelines", art: "chat" },
+  { tag: "DATA & BI", title: "Dashboards on real datasets", art: "chart" },
+  { tag: "DESIGN", title: "Figma design systems", art: "grid" },
+] as const
+
+function BuildArt({ kind }: { kind: (typeof BUILD_ITEMS)[number]["art"] }) {
+  const frame = "border-border bg-muted/40 relative h-28 overflow-hidden rounded-md border"
+  if (kind === "browser")
+    return (
+      <div className={frame}>
+        <div className="bg-background border-border absolute inset-x-3 top-3 bottom-0 rounded-t border-x border-t p-3">
+          <div className="build-type bg-foreground h-1.5 w-12 rounded-full" />
+          <div className="build-type build-type-2 bg-muted-foreground/25 mt-2 h-1 w-24 rounded-full" />
+          <div className="build-type build-type-3 bg-muted-foreground/25 mt-1.5 h-1 w-20 rounded-full" />
+          <div className="relative mt-3 w-fit">
+            <div className="build-press h-5 w-24 rounded bg-(--site-accent)" />
+            <svg viewBox="0 0 12 16" className="build-cursor text-foreground absolute top-2.5 left-16 hidden size-3.5">
+              <path d="M1 1 L1 13 L4.2 10 L6.4 15 L8.4 14.1 L6.2 9.2 L10.5 9.2 Z" fill="currentColor" stroke="white" strokeWidth="1" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    )
+  if (kind === "chat")
+    return (
+      <div className={cn(frame, "flex flex-col justify-center gap-2 px-4")}>
+        <div className="build-msg-1 bg-background border-border w-fit rounded-md border px-2 py-1 text-[9px]">
+          Summarise this document
+        </div>
+        <div className="ml-auto grid justify-items-end">
+          <div className="build-typing bg-background border-border flex gap-0.5 rounded-md border px-2 py-1.5 opacity-0 [grid-area:1/1]">
+            {[0, 1, 2].map((i) => (
+              <span key={i} className="bg-muted-foreground size-1 rounded-full" />
+            ))}
+          </div>
+          <div className="build-msg-2 w-fit rounded-md bg-(--site-accent) px-2 py-1 text-[9px] text-white [grid-area:1/1]">
+            Done. 3 key points found.
+          </div>
+        </div>
+        <div className="text-muted-foreground text-center font-mono text-[8px]">agent · retrieval · tools</div>
+      </div>
+    )
+  if (kind === "chart")
+    return (
+      <div className={cn(frame, "flex items-end justify-center gap-2 px-4 pb-3")}>
+        {[40, 55, 45, 95, 60].map((h, i) => (
+          <div
+            key={i}
+            className={cn("build-bar w-5 rounded-sm", i === 3 ? "bg-(--site-accent)" : "bg-muted-foreground/20")}
+            style={{ height: `${h}%`, animationDelay: `${-i * 0.45}s` }}
+          />
+        ))}
+      </div>
+    )
+  return (
+    <div className={cn(frame, "grid grid-cols-2 gap-1.5 p-3")}>
+      <div className="build-tile bg-foreground rounded-sm" />
+      <div className="build-tile build-tile-2 bg-muted-foreground/20 rounded-sm" />
+      <div className="build-tile build-tile-3 bg-muted-foreground/20 rounded-sm" />
+      <div className="relative overflow-hidden rounded-sm border border-dashed border-(--site-accent)">
+        <div className="build-fill absolute inset-0.5 scale-0 rounded-[2px] bg-(--site-accent)/25" />
+      </div>
+    </div>
+  )
+}
+
+function BuildSection() {
+  return (
+    <section id="build" className="scroll-mt-20 py-20 sm:py-24">
+      <div className={siteContainer}>
+        <SectionLabel>{"// 001 what you build"}</SectionLabel>
+        <SectionTitle>Real projects, not slides.</SectionTitle>
+        <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {BUILD_ITEMS.map((b) => (
+            <article key={b.title} className="border-border bg-card rounded-lg border p-3 pb-5">
+              <BuildArt kind={b.art} />
+              <div className="text-muted-foreground mt-4 px-1 font-mono text-[10px]">{b.tag}</div>
+              <h3 className="mt-1 px-1 text-[15px] font-semibold leading-snug">{b.title}</h3>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/** Numbered course rows, also used on the courses page. */
+export function CourseRows({ courses, loading }: { courses: ICourse[]; loading: boolean }) {
+  return (
+    <ul className="border-border border-t">
+      {loading && !courses.length && (
+        <li className="text-muted-foreground border-border border-b py-8 font-mono text-xs">loading courses…</li>
+      )}
+      {!loading && !courses.length && (
+        <li className="text-muted-foreground border-border border-b py-8 text-sm">
+          No courses to show right now. Message us on WhatsApp for the next intake.
+        </li>
+      )}
+      {courses.map((c, i) => {
+        const tools = c.technologiesSection.technologies
+          .slice(0, 3)
+          .map((t) => t.label)
+          .join(", ")
+        return (
+          <li key={c.slug} className="border-border border-b">
+            <Link
+              href={`${ROUTES.COURSES}/${c.slug}`}
+              className="group grid grid-cols-[2.5rem_1fr_auto] items-center gap-x-4 gap-y-1 py-5 sm:grid-cols-[3rem_minmax(0,1.3fr)_minmax(0,1fr)_auto_1.5rem] sm:py-6"
+            >
+              <span className="text-muted-foreground font-mono text-[10px]">T.{String(i + 1).padStart(2, "0")}</span>
+              <span className="text-lg font-semibold tracking-tight transition-colors group-hover:text-(--site-accent) sm:text-2xl">
+                {c.title}
+              </span>
+              <span className="text-muted-foreground col-start-2 row-start-2 truncate text-xs sm:col-start-auto sm:row-start-auto">
+                {tools || c.subtitle}
+              </span>
+              <span className="text-muted-foreground col-start-2 row-start-3 font-mono text-[10px] sm:col-start-auto sm:row-start-auto sm:text-right">
+                {c.courseDurationInMonths} months
+              </span>
+              <ArrowRightIcon
+                className="col-start-3 row-start-1 size-4 transition-transform group-hover:translate-x-1 sm:col-start-auto sm:row-start-auto"
+                aria-hidden
+              />
+            </Link>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+function TracksSection({ courses, loading }: { courses: ICourse[]; loading: boolean }) {
+  return (
+    <section id="courses" className="scroll-mt-20 py-20 sm:py-24">
+      <div className={siteContainer}>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <SectionLabel>{"// 002 courses"}</SectionLabel>
+            <SectionTitle>Pick a track.</SectionTitle>
+          </div>
+          <Link href={ROUTES.COURSES} className="text-muted-foreground hover:text-foreground font-mono text-[11px]">
+            all courses →
+          </Link>
+        </div>
+        <div className="mt-10">
+          <CourseRows courses={courses} loading={loading} />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+export const METHOD_STEPS = [
+  { t: "Learn", d: "Short lessons with one clear outcome." },
+  { t: "Practice", d: "Build it yourself the same day." },
+  { t: "Submit", d: "Send your project through the dashboard." },
+  { t: "Get marked", d: "Mentor feedback and a mark that stays on record." },
+]
+
+/** Numbered steps joined by a dashed line; the last step is highlighted. */
+export function StepLoop({ steps }: { steps: { t: string; d: string }[] }) {
+  return (
+    <ol className={cn("grid gap-8 sm:grid-cols-2 lg:gap-6", steps.length === 5 ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
+      {steps.map((s, i) => {
+        const last = i === steps.length - 1
+        return (
+          <li key={s.t} className="relative">
+            {!last && (
+              <span
+                aria-hidden
+                className="border-border absolute top-3 left-8 hidden w-[calc(100%-1rem)] border-t border-dashed lg:block"
+              />
+            )}
+            <span
+              className={cn(
+                "relative flex size-6 items-center justify-center rounded-full border font-mono text-[10px]",
+                last ? "border-(--site-accent) bg-(--site-accent) text-white" : "border-foreground bg-background"
+              )}
+            >
+              {i + 1}
+            </span>
+            <div className="mt-4 text-[15px] font-semibold">{s.t}</div>
+            <p className="text-muted-foreground mt-1 max-w-56 text-xs leading-relaxed">{s.d}</p>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+function MethodSection() {
+  return (
+    <section id="method" className="scroll-mt-20 py-20 sm:py-24">
+      <div className={siteContainer}>
+        <SectionLabel>{"// 003 method"}</SectionLabel>
+        <SectionTitle>One loop in every lesson.</SectionTitle>
+        <div className="mt-12">
+          <StepLoop steps={METHOD_STEPS} />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/** Bordered row of big numbers with small mono captions. */
+export function StatGrid({ cells }: { cells: { value: string; label: string }[] }) {
+  return (
+    <dl className="border-border grid grid-cols-2 overflow-hidden rounded-lg border lg:grid-cols-4">
+      {cells.map((c, i) => (
+        <div
+          key={c.label}
+          className={cn(
+            "border-border px-5 py-6 sm:px-6",
+            i % 2 === 1 && "border-l",
+            i >= 2 && "border-t lg:border-t-0",
+            i === 2 && "lg:border-l"
+          )}
+        >
+          <dd className="text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">
+            <CountUp value={c.value} />
+          </dd>
+          <dt className="text-muted-foreground mt-2 font-mono text-[10px]">{c.label}</dt>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+/** Counts a leading number ("120+") up from 0 the first time it scrolls into view. */
+function CountUp({ value }: { value: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const match = /^(\d[\d,]*)(.*)$/.exec(value)
+  const target = match ? Number(match[1]!.replace(/,/g, "")) : null
+  const [shown, setShown] = useState<number | null>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el || target == null || target === 0) return
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    let frame = 0
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return
+      observer.disconnect()
+      const start = performance.now()
+      const tick = (now: number) => {
+        const p = Math.min(1, (now - start) / 900)
+        setShown(Math.round(target * (1 - (1 - p) ** 3)))
+        if (p < 1) frame = requestAnimationFrame(tick)
+      }
+      frame = requestAnimationFrame(tick)
+    })
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(frame)
+    }
+  }, [target])
+
+  return <span ref={ref}>{match && shown != null ? `${shown.toLocaleString()}${match[2]}` : value}</span>
+}
+
+export function statCells(stats: PublicSiteStats | null) {
+  const n = (v: number | undefined) => (v == null ? "—" : v.toLocaleString())
+  return [
+    {
+      value: stats ? `${n(stats.students)}${stats.students > 0 ? "+" : ""}` : "—",
+      label: "students",
+    },
+    { value: n(stats?.projectsMarked), label: "projects marked" },
+    { value: n(stats?.mentors), label: "mentors" },
+    { value: n(stats?.courses), label: "courses" },
+  ]
+}
+
+function ResultsSection({ stats }: { stats: PublicSiteStats | null }) {
+  return (
+    <section id="results" className="scroll-mt-20 py-20 sm:py-24">
+      <div className={siteContainer}>
+        <SectionLabel>{"// 004 results"}</SectionLabel>
+        <SectionTitle>Proof, not promises.</SectionTitle>
+        <div className="mt-10">
+          <StatGrid cells={statCells(stats)} />
+        </div>
+        <GoogleReviews />
+      </div>
+    </section>
+  )
+}
+
+function Stars({ rating, className }: { rating: number; className?: string }) {
+  return (
+    <span className={cn("inline-flex gap-0.5", className)} role="img" aria-label={`${rating} out of 5 stars`}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <StarIcon
+          key={i}
+          aria-hidden
+          className={cn("size-3.5", i <= Math.round(rating) ? "fill-amber-400 text-amber-400" : "text-border")}
+        />
+      ))}
+    </span>
+  )
+}
+
+/** 4 Google reviews (fixed list in utils/constants/google-reviews.ts) and a link to write one on Google. */
+function GoogleReviews() {
+  const reviews = GOOGLE_REVIEWS.slice(0, 4)
+  if (reviews.length === 0 && !GOOGLE_WRITE_REVIEW_URL) return null
+
+  return (
+    <div className="mt-14">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className="text-muted-foreground font-mono text-[10px]">google reviews</div>
+          <div className="mt-2 text-xl font-semibold tracking-tight">What our students say</div>
+          <div className="border-border bg-card mt-3 inline-flex items-center gap-2.5 rounded-full border py-1.5 pr-4 pl-1.5 shadow-sm">
+            <span className="flex size-7 items-center justify-center rounded-full bg-white text-sm font-bold shadow-sm ring-1 ring-black/5">
+              <span className="bg-[conic-gradient(#ea4335_0_25%,#fbbc05_0_50%,#34a853_0_75%,#4285f4_0)] bg-clip-text text-transparent">
+                G
+              </span>
+            </span>
+            <span className="text-lg font-semibold tabular-nums">{GOOGLE_RATING.toFixed(1)}</span>
+            <Stars rating={GOOGLE_RATING} />
+            <span className="text-muted-foreground text-xs">rating on Google</span>
+          </div>
+        </div>
+        {GOOGLE_WRITE_REVIEW_URL && (
+          <a href={GOOGLE_WRITE_REVIEW_URL} target="_blank" rel="noopener noreferrer" className={siteButton.primary}>
+            Write a review <ArrowRightIcon className="size-4" aria-hidden />
+          </a>
+        )}
+      </div>
+
+      {reviews.length > 0 && (
+        <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {reviews.map((r) => (
+            <li
+              key={r.authorName}
+              className="border-border bg-card flex flex-col rounded-lg border p-5 transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-lg"
+            >
+              <Stars rating={r.rating} />
+              <p className="text-foreground/85 mt-3 flex-1 text-sm leading-relaxed">{r.text}</p>
+              <div className="border-border mt-5 flex items-center gap-3 border-t pt-4">
+                <span className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+                  {r.authorName.charAt(0).toUpperCase()}
+                </span>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">{r.authorName}</div>
+                  <div className="text-muted-foreground font-mono text-[10px]">
+                    google{r.relativeTime ? ` · ${r.relativeTime}` : ""}
+                  </div>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+/** Expandable question rows (native details/summary). */
+export function FaqList({ items }: { items: { question: string; answer: string }[] }) {
+  return (
+    <div className="border-border border-t">
+      {items.map((f) => (
+        <details key={f.question} className="group border-border border-b">
+          <summary className="flex cursor-pointer list-none items-center gap-3 py-4 text-sm font-medium [&::-webkit-details-marker]:hidden">
+            <ChevronRightIcon
+              className="size-3.5 shrink-0 fill-current transition-transform group-open:rotate-90"
+              aria-hidden
+            />
+            {f.question}
+          </summary>
+          <p className="text-muted-foreground pb-4 pl-6 text-sm leading-relaxed">{f.answer}</p>
+        </details>
+      ))}
+    </div>
+  )
+}
+
+const FEE_STEPS = ["Choose your course", "Pay and upload receipt", "Get approved", "Open your dashboard"]
+
+function FeesAndFaqSection() {
+  const faqs = HOME_FAQ_QUESTIONS.map((q) => FAQS.find((f) => f.question === q)).filter(
+    (f): f is (typeof FAQS)[number] => Boolean(f)
+  )
+  return (
+    <section id="fees" className="scroll-mt-20 py-20 sm:py-24">
+      <div className={cn(siteContainer, "grid gap-14 lg:grid-cols-2 lg:gap-16")}>
+        <div>
+          <SectionLabel>{"// 005 enrollment"}</SectionLabel>
+          <SectionTitle>Simple to start.</SectionTitle>
+          <p className="text-muted-foreground mt-4 max-w-md text-sm leading-relaxed">
+            Choose a course, pay the fee and upload your receipt. Your account is activated as soon as we confirm your
+            payment. Each course page shows its fee.
+          </p>
+          <ol className="border-border mt-6 border-t">
+            {FEE_STEPS.map((s, i) => (
+              <li key={s} className="border-border flex gap-4 border-b py-2.5 font-mono text-xs">
+                <span className="text-(--site-accent)">{String(i + 1).padStart(2, "0")}</span>
+                {s}
+              </li>
+            ))}
+          </ol>
+          <Link href={ROUTES.ENROLLMENT} className={cn(siteButton.primary, "mt-7")}>
+            Start enrollment <ArrowRightIcon className="size-4" aria-hidden />
+          </Link>
+        </div>
+        <div id="faq" className="scroll-mt-20">
+          <SectionLabel>{"// 006 faq"}</SectionLabel>
+          <div className="mt-6 lg:mt-[4.6rem]">
+            <FaqList items={faqs} />
+            <Link
+              href={ROUTES.FAQS}
+              className="text-muted-foreground hover:text-foreground mt-4 inline-block font-mono text-[11px]"
+            >
+              all questions →
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}

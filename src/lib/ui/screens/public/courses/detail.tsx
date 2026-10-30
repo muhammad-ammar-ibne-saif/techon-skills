@@ -4,57 +4,43 @@ import Link from "next/link"
 import Image from "next/image"
 import { useQuery } from "@apollo/client/react"
 import { useMemo } from "react"
-import {
-  ArrowRightIcon,
-  CheckCircle2Icon,
-  ClipboardListIcon,
-  GraduationCapIcon,
-  ListChecksIcon,
-  Loader2Icon,
-  RocketIcon,
-  SparklesIcon,
-  TrophyIcon,
-} from "lucide-react"
+import { ArrowLeftIcon, ArrowRightIcon, CheckIcon } from "lucide-react"
 
 import { useCourses } from "@/lib/providers/courses"
 import { useUser } from "@/lib/providers/user"
-import { formatCourseDuration, formatCoursePrice, getImageSrc, isBackendImageUrl, mapApiCourseToICourse, type IApiCourse } from "@/lib/helpers"
+import {
+  cn,
+  formatCourseDuration,
+  formatCoursePrice,
+  getImageSrc,
+  isBackendImageUrl,
+  mapApiCourseToICourse,
+  type IApiCourse,
+} from "@/lib/helpers"
 import { GET_COURSE_BY_SLUG } from "@/lib/graphql"
-import { Button } from "@/lib/ui/useable-components/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/lib/ui/useable-components/card"
-import { Separator } from "@/lib/ui/useable-components/separator"
-import { TechLogoCard } from "@/lib/ui/useable-components/tech-logos"
-import { techIdFromLabel } from "@/lib/helpers"
-import { COURSE_DETAIL, HERO_GRADIENT_CLASS } from "@/utils/constants/course-detail"
+import { StepLoop } from "@/lib/ui/screens/public/landing"
+import {
+  PageIntro,
+  SectionLabel,
+  SectionTitle,
+  siteButton,
+  siteContainer,
+  siteDotGrid,
+} from "@/lib/ui/useable-components/site-chrome/ui"
+import { COURSE_DETAIL } from "@/utils/constants/course-detail"
 import { CONFIG } from "@/utils/constants/config"
-
-const STEP_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  rocket: RocketIcon,
-  "graduation-cap": GraduationCapIcon,
-  "clipboard-list": ClipboardListIcon,
-  "list-checks": ListChecksIcon,
-  trophy: TrophyIcon,
-}
 
 export const PublicCourseDetailScreen = ({ slug }: { slug: string }) => {
   const { getCourseBySlug, loading: coursesLoading } = useCourses()
   const { enrolledCoursesFromApi, requestedCoursesFromApi } = useUser()
   const courseFromList = getCourseBySlug(slug)
 
-  const enrolledCourseIds = useMemo(
-    () => new Set(enrolledCoursesFromApi?.map((c) => c.id).filter(Boolean) ?? []),
+  const enrolled = useMemo(
+    () => new Set((enrolledCoursesFromApi ?? []).flatMap((c) => [c.id, c.slug]).filter(Boolean)),
     [enrolledCoursesFromApi]
   )
-  const enrolledCourseSlugs = useMemo(
-    () => new Set(enrolledCoursesFromApi?.map((c) => c.slug).filter(Boolean) ?? []),
-    [enrolledCoursesFromApi]
-  )
-  const requestedCourseIds = useMemo(
-    () => new Set(requestedCoursesFromApi?.map((c) => c.id).filter(Boolean) ?? []),
-    [requestedCoursesFromApi]
-  )
-  const requestedCourseSlugs = useMemo(
-    () => new Set(requestedCoursesFromApi?.map((c) => c.slug).filter(Boolean) ?? []),
+  const requested = useMemo(
+    () => new Set((requestedCoursesFromApi ?? []).flatMap((c) => [c.id, c.slug]).filter(Boolean)),
     [requestedCoursesFromApi]
   )
 
@@ -63,265 +49,213 @@ export const PublicCourseDetailScreen = ({ slug }: { slug: string }) => {
     skip: !slug || !!courseFromList,
   })
 
-  const courseBySlug = slugData?.getCourseBySlug
-    ? mapApiCourseToICourse(slugData.getCourseBySlug)
-    : null
+  const courseBySlug = slugData?.getCourseBySlug ? mapApiCourseToICourse(slugData.getCourseBySlug) : null
   const course = courseFromList ?? courseBySlug ?? null
   const loading = coursesLoading || (!!slug && !courseFromList && slugLoading)
 
   if (loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center px-4 py-12">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader2Icon className="size-6 animate-spin" />
-          <span>Loading course...</span>
-        </div>
-      </div>
+      <div className={cn(siteContainer, "text-muted-foreground py-24 font-mono text-xs")}>loading course…</div>
     )
   }
 
   if (!course) {
     const { notFound } = COURSE_DETAIL
     return (
-      <div className="w-full px-4 py-12 sm:px-6 lg:px-8 2xl:px-10">
-        <div className="mx-auto max-w-4xl">
-          <Card className="bg-background/60 backdrop-blur supports-backdrop-filter:bg-background/50">
-            <CardHeader>
-              <CardTitle>{notFound.title}</CardTitle>
-              <CardDescription>{notFound.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild variant="brand-secondary" shape="pill">
-                <Link href={CONFIG.ROUTES.PUBLIC.COURSES}>{notFound.backLabel}</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <PageIntro label="// 404" title={notFound.title} description="This course may have been removed or the link is wrong.">
+        <Link href={CONFIG.ROUTES.PUBLIC.COURSES} className={siteButton.primary}>
+          {notFound.backLabel}
+        </Link>
+      </PageIntro>
     )
   }
 
   const { hero, articleSection, steps: stepsSection, infoCard, cta } = COURSE_DETAIL
+  const status =
+    (course.id && enrolled.has(course.id)) || enrolled.has(course.slug)
+      ? "enrolled"
+      : (course.id && requested.has(course.id)) || requested.has(course.slug)
+        ? "requested"
+        : null
+  const enrollHref = `${CONFIG.ROUTES.PUBLIC.ENROLLMENT}?course=${encodeURIComponent(course.slug)}`
+  const tools = course.technologiesSection.technologies
+
+  const enrollAction = status ? (
+      <span className="text-muted-foreground inline-flex items-center gap-1.5 font-mono text-xs">
+        <CheckIcon className="size-3.5" aria-hidden />
+        {status === "enrolled" ? "you're enrolled" : "enrollment requested"}
+      </span>
+    ) : (
+      <Link href={enrollHref} className={siteButton.primary}>
+        {hero.enrollLabel} <ArrowRightIcon className="size-4" aria-hidden />
+      </Link>
+  )
+
+  const sections = [
+    course.heroDescription && "overview",
+    course.articleFeatures.length > 0 && "what you get",
+    tools.length > 0 && "tools",
+    "your path",
+  ].filter(Boolean)
+  const nextLabel = (name: string) => `// ${String(sections.indexOf(name) + 1).padStart(3, "0")} ${name}`
 
   return (
     <div className="w-full">
-      <div className={`border-border/60 ${HERO_GRADIENT_CLASS} relative border-b`}>
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.35),transparent_60%)]" />
-        <div className="px-4 py-14 sm:px-6 lg:px-8 2xl:px-10">
-          <div className="mx-auto max-w-6xl">
-            <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
-              <div className="space-y-4">
-                <div className="inline-flex items-center gap-2 rounded-full border bg-background/50 px-3 py-1 text-xs font-semibold">
-                  <CheckCircle2Icon className="size-4 text-(--brand-highlight)" />
-                  {formatCourseDuration(course)} • {formatCoursePrice(course)}
-                </div>
-                <h1 className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
-                  {course.title}
-                </h1>
-                <p className="text-muted-foreground max-w-2xl text-pretty text-lg leading-8">
-                  {course.subtitle}
-                </p>
-
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-                  {(course.id && enrolledCourseIds.has(course.id)) || enrolledCourseSlugs.has(course.slug) ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted-surface px-4 py-2 text-sm font-semibold text-muted-foreground">
-                      <CheckCircle2Icon className="size-4 shrink-0" />
-                      Already enrolled
-                    </span>
-                  ) : (course.id && requestedCourseIds.has(course.id)) || requestedCourseSlugs.has(course.slug) ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted-surface px-4 py-2 text-sm font-semibold text-muted-foreground">
-                      <CheckCircle2Icon className="size-4 shrink-0" />
-                      You&apos;ve already requested
-                    </span>
-                  ) : (
-                    <Button asChild size="xl" shape="pill" variant="brand-secondary">
-                      <Link href={`${CONFIG.ROUTES.PUBLIC.ENROLLMENT}?course=${encodeURIComponent(course.slug)}`}>
-                        {hero.enrollLabel}
-                        <ArrowRightIcon className="size-4" />
-                      </Link>
-                    </Button>
-                  )}
-                  <Button asChild variant="outline" size="xl" shape="pill">
-                    <Link href={CONFIG.ROUTES.PUBLIC.COURSES}>{hero.backToCoursesLabel}</Link>
-                  </Button>
-                </div>
-
-                <div className="text-muted-foreground text-sm leading-7">
-                  {hero.careerNote}
-                </div>
-              </div>
-
-              <Card className="bg-background/55 backdrop-blur supports-backdrop-filter:bg-background/45">
-                <CardHeader>
-                  <CardTitle>{hero.cardTitle}</CardTitle>
-                  <CardDescription>{hero.cardDescription}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  {hero.bullets.map((t) => (
-                    <div key={t} className="flex items-start gap-2">
-                      <CheckCircle2Icon className="mt-0.5 size-4 text-(--brand-highlight)" />
-                      <div>{t}</div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
+      <section className={cn("border-border/60 border-b", siteDotGrid)}>
+        <div className={cn(siteContainer, "grid items-start gap-10 py-14 sm:py-20 lg:grid-cols-[1.2fr_0.8fr]")}>
+          <div>
+            <Link
+              href={CONFIG.ROUTES.PUBLIC.COURSES}
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 font-mono text-[11px]"
+            >
+              <ArrowLeftIcon className="size-3" aria-hidden /> {hero.backToCoursesLabel.toLowerCase()}
+            </Link>
+            <SectionLabel className="mt-6">
+              {`// ${formatCourseDuration(course).toLowerCase()}`}
+            </SectionLabel>
+            <h1 className="mt-4 text-balance text-4xl font-semibold leading-[1.05] tracking-[-0.04em] sm:text-[3.25rem]">
+              {course.title}
+            </h1>
+            <p className="text-muted-foreground mt-5 max-w-xl text-[15px] leading-relaxed">{course.subtitle}</p>
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              {enrollAction}
+              <a href="#path" className={siteButton.outline}>
+                How it works
+              </a>
             </div>
+            <p className="text-muted-foreground mt-6 max-w-xl text-xs leading-relaxed">{hero.careerNote}</p>
+          </div>
+
+          <div className="border-border bg-card rounded-xl border shadow-[0_24px_60px_-28px_rgba(15,15,40,0.35)]">
+            <div className="border-border border-b px-5 py-3 font-mono text-[10px] text-muted-foreground">
+              {hero.cardTitle.toLowerCase()}
+            </div>
+            <ul className="divide-border divide-y text-sm">
+              {hero.bullets.map((t) => (
+                <li key={t} className="flex items-start gap-2.5 px-5 py-3">
+                  <CheckIcon className="mt-0.5 size-4 shrink-0 text-(--site-accent)" aria-hidden />
+                  {t}
+                </li>
+              ))}
+            </ul>
+            <dl className="border-border grid grid-cols-2 border-t">
+              <div className="px-5 py-4">
+                <dt className="text-muted-foreground font-mono text-[10px]">duration</dt>
+                <dd className="mt-1 text-lg font-semibold">{formatCourseDuration(course)}</dd>
+              </div>
+              <div className="border-border border-l px-5 py-4">
+                <dt className="text-muted-foreground font-mono text-[10px]">full fee</dt>
+                <dd className="mt-1 text-lg font-semibold">{formatCoursePrice(course)}</dd>
+              </div>
+            </dl>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="px-4 py-12 sm:px-6 lg:px-8 2xl:px-10">
-        <div className="mx-auto max-w-6xl space-y-8">
-          {course.articleFeatures.length > 0 && (
-            <>
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 rounded-full border bg-background/60 px-3 py-1 text-xs font-semibold">
-                  <SparklesIcon className="size-3.5 text-(--brand-highlight)" />
-                  {articleSection.badgeLabel}
-                </div>
-                <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-                  {articleSection.heading}
-                </h2>
-                <p className="text-muted-foreground max-w-3xl text-pretty">
-                  {articleSection.subtext}
-                </p>
-              </div>
+      {course.heroDescription && (
+        <section className="py-16 sm:py-20">
+          <div className={siteContainer}>
+            <SectionLabel>{nextLabel("overview")}</SectionLabel>
+            <p className="mt-4 max-w-3xl text-xl leading-relaxed tracking-tight sm:text-2xl">{course.heroDescription}</p>
+          </div>
+        </section>
+      )}
 
-              <div className="space-y-16">
-                {course.articleFeatures.map((feature, idx) => (
-                  <div
-                    key={feature.name}
-                    className="grid gap-8 lg:grid-cols-2 lg:gap-12 lg:items-center"
-                  >
-                    <div className={idx % 2 === 1 ? "lg:order-2" : ""}>
-                      <div className="relative overflow-hidden rounded-2xl">
-                        <div className="aspect-4/3 w-full overflow-hidden rounded-2xl border bg-muted-surface/50 shadow-lg">
-                          <Image
-                            src={getImageSrc(feature.image) || feature.image}
-                            alt=""
-                            width={800}
-                            height={600}
-                            className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
-                            sizes="(max-width: 1024px) 100vw, 50vw"
-                            unoptimized={isBackendImageUrl(feature.image)}
-                          />
-                        </div>
-                        <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-border/40" />
-                      </div>
-                    </div>
-                    <div className={idx % 2 === 1 ? "lg:order-1" : ""}>
-                      <div className="space-y-3">
-                        <h3 className="text-xl font-semibold tracking-tight sm:text-2xl">
-                          {feature.name}
-                        </h3>
-                        <p className="text-muted-foreground leading-7">
-                          {feature.description}
-                        </p>
-                      </div>
-                    </div>
+      {course.articleFeatures.length > 0 && (
+        <section className="py-16 sm:py-20">
+          <div className={siteContainer}>
+            <SectionLabel>{nextLabel("what you get")}</SectionLabel>
+            <SectionTitle>{articleSection.heading}</SectionTitle>
+            <div className="mt-12 space-y-14">
+              {course.articleFeatures.map((feature, idx) => (
+                <div key={feature.name} className="grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
+                  <div className={cn("border-border bg-muted/40 overflow-hidden rounded-lg border", idx % 2 === 1 && "lg:order-2")}>
+                    <Image
+                      src={getImageSrc(feature.image) || feature.image}
+                      alt=""
+                      width={800}
+                      height={600}
+                      className="aspect-4/3 h-full w-full object-cover"
+                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      unoptimized={isBackendImageUrl(feature.image)}
+                    />
                   </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          <div className="space-y-2">
-            <div className="text-sm font-semibold text-secondary">Technologies</div>
-            <h3 className="text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
-              {course.technologiesSection.title}
-            </h3>
-            <p className="text-muted-foreground max-w-3xl text-pretty">
-              {course.technologiesSection.description}
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {course.technologiesSection.technologies.map((t, idx) => (
-              <TechLogoCard
-                key={t.label}
-                id={techIdFromLabel(t.label)}
-                label={t.label}
-                logoUrl={t.logo ? getImageSrc(t.logo) || t.logo : undefined}
-                delayMs={idx * 80}
-              />
-            ))}
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-sm font-semibold text-secondary">{stepsSection.label}</div>
-            <h3 className="text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
-              {stepsSection.heading}
-            </h3>
-            <p className="text-muted-foreground max-w-3xl text-pretty">
-              {stepsSection.subtext}
-            </p>
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-5">
-            {stepsSection.items.map((s) => {
-              const StepIcon = STEP_ICONS[s.iconKey] ?? RocketIcon
-              return (
-                <Card
-                  key={s.title}
-                  className="bg-background/60 backdrop-blur supports-backdrop-filter:bg-background/50"
-                >
-                  <CardHeader className="space-y-3">
-                    <div className="bg-background/40 relative overflow-hidden rounded-2xl border p-4">
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(70,208,255,0.22),transparent_60%)]" />
-                      <div className="relative flex items-center gap-2">
-                        <span className="bg-(--brand-primary) text-(--text-on-dark) inline-flex size-9 items-center justify-center rounded-xl">
-                          <StepIcon className="size-4" />
-                        </span>
-                        <div className="text-sm font-semibold">{s.title}</div>
-                      </div>
-                    </div>
-                    <CardDescription className="text-sm leading-7">{s.description}</CardDescription>
-                  </CardHeader>
-                </Card>
-              )
-            })}
-          </div>
-
-          <Card className="bg-background/60 backdrop-blur supports-backdrop-filter:bg-background/50">
-            <CardContent className="grid gap-6 p-6 sm:grid-cols-3 sm:p-8">
-              {infoCard.items.map((item) => (
-                <div key={item.key} className="rounded-2xl border bg-background/40 p-5">
-                  <div className="text-muted-foreground text-xs">{item.label}</div>
-                  <div className="mt-1 text-xl font-semibold">{item.value}</div>
+                  <div>
+                    <div className="text-muted-foreground font-mono text-[10px]">{String(idx + 1).padStart(2, "0")}</div>
+                    <h3 className="mt-2 text-2xl font-semibold tracking-tight">{feature.name}</h3>
+                    <p className="text-muted-foreground mt-3 leading-relaxed">{feature.description}</p>
+                  </div>
                 </div>
               ))}
-            </CardContent>
-          </Card>
-
-          <Separator />
-
-          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-            <div>
-              <div className="text-lg font-semibold">{cta.heading}</div>
-              <div className="text-muted-foreground text-sm">{cta.subtext}</div>
             </div>
-            {(course.id && enrolledCourseIds.has(course.id)) || enrolledCourseSlugs.has(course.slug) ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted-surface px-4 py-2 text-sm font-semibold text-muted-foreground">
-                <CheckCircle2Icon className="size-4 shrink-0" />
-                Already enrolled
-              </span>
-            ) : (course.id && requestedCourseIds.has(course.id)) || requestedCourseSlugs.has(course.slug) ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted-surface px-4 py-2 text-sm font-semibold text-muted-foreground">
-                <CheckCircle2Icon className="size-4 shrink-0" />
-                You&apos;ve already requested
-              </span>
-            ) : (
-              <Button asChild size="xl" shape="pill" variant="brand-secondary">
-                <Link href={`${CONFIG.ROUTES.PUBLIC.ENROLLMENT}?course=${encodeURIComponent(course.slug)}`}>
-                  {cta.buttonLabel}
-                  <ArrowRightIcon className="size-4" />
-                </Link>
-              </Button>
-            )}
           </div>
+        </section>
+      )}
+
+      {tools.length > 0 && (
+        <section className="py-16 sm:py-20">
+          <div className={siteContainer}>
+            <SectionLabel>{nextLabel("tools")}</SectionLabel>
+            <SectionTitle>{course.technologiesSection.title}</SectionTitle>
+            <p className="text-muted-foreground mt-4 max-w-2xl text-sm leading-relaxed">
+              {course.technologiesSection.description}
+            </p>
+            <ul className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {tools.map((t) => (
+                <li key={t.label} className="border-border bg-card flex items-start gap-3 rounded-lg border p-4">
+                  {t.logo ? (
+                    <Image
+                      src={getImageSrc(t.logo) || t.logo}
+                      alt=""
+                      width={36}
+                      height={36}
+                      className="size-9 shrink-0 rounded object-contain"
+                      unoptimized={isBackendImageUrl(t.logo)}
+                    />
+                  ) : (
+                    <span className="bg-muted size-9 shrink-0 rounded" />
+                  )}
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold">{t.label}</div>
+                    <p className="text-muted-foreground mt-0.5 line-clamp-3 text-xs leading-relaxed">{t.description}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      <section id="path" className="scroll-mt-20 py-16 sm:py-20">
+        <div className={siteContainer}>
+          <SectionLabel>{nextLabel("your path")}</SectionLabel>
+          <SectionTitle>{stepsSection.heading}</SectionTitle>
+          <p className="text-muted-foreground mt-4 max-w-2xl text-sm leading-relaxed">{stepsSection.subtext}</p>
+          <div className="mt-12">
+            <StepLoop steps={stepsSection.items.map((s) => ({ t: s.title.replace(/^Step \d+:\s*/, ""), d: s.description }))} />
+          </div>
+          <dl className="border-border mt-14 grid overflow-hidden rounded-lg border sm:grid-cols-3">
+            {infoCard.items.map((item, i) => (
+              <div key={item.key} className={cn("border-border px-5 py-5", i > 0 && "border-t sm:border-t-0 sm:border-l")}>
+                <dt className="text-muted-foreground font-mono text-[10px]">{item.label.toLowerCase()}</dt>
+                <dd className="mt-1.5 font-semibold">{item.value}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
-      </div>
+      </section>
+
+      <section className="border-border/60 border-t py-14">
+        <div className={cn(siteContainer, "flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between")}>
+          <div>
+            <div className="text-2xl font-semibold tracking-tight">{cta.heading}</div>
+            <div className="text-muted-foreground mt-1 text-sm">
+              Course fee: {formatCoursePrice(course)}
+            </div>
+          </div>
+          {enrollAction}
+        </div>
+      </section>
     </div>
   )
 }
-

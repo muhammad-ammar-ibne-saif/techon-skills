@@ -254,6 +254,13 @@ function PublicEnrollmentApplicationsPanel() {
                                 <li key={c.slug}>{c.title}</li>
                               ))}
                             </ul>
+                            <div className="mt-1.5 text-xs font-medium">
+                              {app.paymentPlan === "FULL"
+                                ? "Full payment"
+                                : app.paymentPlan === "MORE_INSTALLMENTS"
+                                  ? `Asks for ${app.requestedInstallments ?? "?"} installments`
+                                  : "2 installments"}
+                            </div>
                           </td>
                           <td className="p-4 align-top text-xs text-muted-foreground whitespace-nowrap">
                             {formatDateTime(app.createdAt)}

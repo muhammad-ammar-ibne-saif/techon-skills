@@ -14,9 +14,24 @@ export interface ContactFormValues {
   message: string
 }
 
-/** Enrollment: contact fields + fee screenshot for registration. */
+export type EnrollmentPaymentPlan = "FULL" | "TWO_INSTALLMENTS" | "MORE_INSTALLMENTS"
+export const MIN_REQUESTED_INSTALLMENTS = 3
+export const MAX_REQUESTED_INSTALLMENTS = 4
+
+/** Enrollment: contact fields + payment plan + fee screenshot for registration. */
 export interface EnrollmentFormValues extends ContactFormValues {
+  paymentPlan: EnrollmentPaymentPlan
+  /** MORE_INSTALLMENTS only. */
+  requestedInstallments: number
   feeScreenshot: File | null
+}
+
+/** What the applicant pays now for one course under the chosen plan (matches the API's schedule). */
+export function firstPaymentFor(totalFee: number, plan: EnrollmentPaymentPlan, installments: number): number {
+  if (plan === "FULL") return totalFee
+  if (plan === "MORE_INSTALLMENTS" && installments > 0)
+    return totalFee - Math.floor(totalFee / installments) * (installments - 1)
+  return Math.ceil(totalFee / 2)
 }
 
 const phoneSchema = Yup.object({
@@ -52,6 +67,10 @@ export const contactFormValidationSchema = Yup.object({
 })
 
 export const enrollmentFormValidationSchema = contactFormValidationSchema.shape({
+  paymentPlan: Yup.string()
+    .oneOf(["FULL", "TWO_INSTALLMENTS", "MORE_INSTALLMENTS"])
+    .required("Choose how you'll pay."),
+  requestedInstallments: Yup.number().integer().min(MIN_REQUESTED_INSTALLMENTS).max(MAX_REQUESTED_INSTALLMENTS).required(),
   feeScreenshot: Yup.mixed()
     .required("Please attach a screenshot of your fee payment.")
     .test("fee-image", "Please attach an image file (PNG or JPG).", (v) => v instanceof File && v.type.startsWith("image/"))
@@ -76,6 +95,8 @@ export function getEnrollmentFormInitialValues(
 ): EnrollmentFormValues {
   return {
     ...getContactFormInitialValues(initialCourse),
+    paymentPlan: "TWO_INSTALLMENTS",
+    requestedInstallments: MIN_REQUESTED_INSTALLMENTS,
     feeScreenshot: null,
   }
 }

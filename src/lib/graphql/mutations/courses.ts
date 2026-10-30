@@ -25,3 +25,11 @@ export const DELETE_COURSE = gql`
         deleteCourse(input: $input)
     }
 `;
+
+export const REORDER_COURSES = gql`
+    mutation ReorderCourses($ids: [ID!]!) {
+        reorderCourses(ids: $ids) {
+            id
+        }
+    }
+`;

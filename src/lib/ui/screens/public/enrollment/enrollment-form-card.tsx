@@ -9,6 +9,8 @@ import { cn, getApiDisplayMessage, logger } from "@/lib/helpers"
 import {
   enrollmentFormValidationSchema,
   getEnrollmentFormInitialValues,
+  MAX_REQUESTED_INSTALLMENTS,
+  MIN_REQUESTED_INSTALLMENTS,
   readFeeScreenshotAsDataUrl,
   type EnrollmentFormValues,
 } from "@/lib/helpers/contact-form"
@@ -25,6 +27,12 @@ import { FormSubmitSuccess } from "@/lib/ui/useable-components/form-submit-succe
 import { CONFIG, SITE_PHONE_DISPLAY, SITE_WHATSAPP_URL } from "@/utils/constants"
 import type { IContactFormCourse, IEnrollmentApplicationSubmit } from "@/utils/interfaces"
 import { LoggerLevel } from "@/utils/enums"
+
+const PAYMENT_PLAN_OPTIONS = [
+  { value: "FULL", label: "Full payment", hint: "Pay the whole fee now" },
+  { value: "TWO_INSTALLMENTS", label: "2 installments", hint: "Half now, half next month" },
+  { value: "MORE_INSTALLMENTS", label: "3 or 4 installments", hint: "On request, needs approval" },
+] as const
 
 type EnrollmentFormCardProps = {
   initialCourse?: { slug: string; title: string } | null
@@ -80,6 +88,8 @@ export function EnrollmentFormCard({
       courses: values.courses,
       message: values.message,
       phone: getFullPhone(values.phone),
+      paymentPlan: values.paymentPlan,
+      ...(values.paymentPlan === "MORE_INSTALLMENTS" ? { requestedInstallments: values.requestedInstallments } : {}),
       feePaymentScreenshotDataUrl: feePaymentScreenshotDataUrl ?? "",
     }
     const toastId = toast.loading("Submitting enrollment…")
@@ -241,8 +251,69 @@ export function EnrollmentFormCard({
             {touched.courses && typeof errors.courses === "string" && (
               <p className="text-destructive mt-1 text-xs">{errors.courses}</p>
             )}
-            <ContactCourseFeesSummary selectedCourses={values.courses} className="mt-3" />
           </div>
+          <fieldset className="w-full">
+            <legend className="text-muted-foreground mb-1.5 text-xs font-medium">How will you pay? *</legend>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {PAYMENT_PLAN_OPTIONS.map((o) => (
+                <label
+                  key={o.value}
+                  className={cn(
+                    "flex cursor-pointer flex-col gap-0.5 rounded-xl border px-3 py-2.5 text-sm transition-colors",
+                    values.paymentPlan === o.value
+                      ? "border-(--brand-primary) bg-(--brand-primary)/10"
+                      : "border-border hover:bg-muted/40"
+                  )}
+                >
+                  <span className="flex items-center gap-2 font-medium">
+                    <input
+                      type="radio"
+                      name="paymentPlan"
+                      value={o.value}
+                      checked={values.paymentPlan === o.value}
+                      onChange={() => setFieldValue("paymentPlan", o.value)}
+                      className="accent-(--brand-primary)"
+                    />
+                    {o.label}
+                  </span>
+                  <span className="text-muted-foreground text-xs">{o.hint}</span>
+                </label>
+              ))}
+            </div>
+            {values.paymentPlan === "MORE_INSTALLMENTS" && (
+              <div className="animate-in fade-in slide-in-from-top-1 mt-2 flex flex-wrap items-center gap-2 text-sm duration-200">
+                <span className="text-muted-foreground">Monthly installments:</span>
+                {Array.from(
+                  { length: MAX_REQUESTED_INSTALLMENTS - MIN_REQUESTED_INSTALLMENTS + 1 },
+                  (_, i) => MIN_REQUESTED_INSTALLMENTS + i
+                ).map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    aria-pressed={values.requestedInstallments === n}
+                    onClick={() => setFieldValue("requestedInstallments", n)}
+                    className={cn(
+                      "rounded-lg border px-3 py-1 font-medium transition-colors",
+                      values.requestedInstallments === n
+                        ? "border-(--brand-primary) bg-(--brand-primary)/10"
+                        : "border-border hover:bg-muted/40"
+                    )}
+                  >
+                    {n}
+                  </button>
+                ))}
+                <span className="text-muted-foreground w-full text-xs">
+                  This is a request. We&apos;ll confirm the plan when we review your enrollment.
+                </span>
+              </div>
+            )}
+            <ContactCourseFeesSummary
+              selectedCourses={values.courses}
+              paymentPlan={values.paymentPlan}
+              requestedInstallments={values.requestedInstallments}
+              className="mt-3"
+            />
+          </fieldset>
           <div className="w-full">
             <div className="text-muted-foreground mb-1.5 text-xs font-medium">Fee payment screenshot *</div>
             <input
@@ -259,7 +330,7 @@ export function EnrollmentFormCard({
               <p className="text-destructive mt-1 text-xs">{errors.feeScreenshot}</p>
             )}
             <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-              Upload proof that matches the total first payment shown above (one screenshot is enough).
+              Upload proof that matches the &quot;Pay now&quot; total shown above (one screenshot is enough).
             </p>
           </div>
           <Textarea

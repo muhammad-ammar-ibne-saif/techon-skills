@@ -33,6 +33,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             id: raw.id,
             email: raw.email,
             fullName: raw.fullName ?? null,
+            phoneNumber: raw.phoneNumber ?? null,
             profilePicture: raw.profilePicture ?? null,
             role: raw.role,
             status: raw.status,

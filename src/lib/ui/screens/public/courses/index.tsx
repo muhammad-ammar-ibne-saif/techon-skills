@@ -1,254 +1,130 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
-import {
-  ArrowRightIcon,
-  BriefcaseIcon,
-  CheckCircle2Icon,
-  FileCheck2Icon,
-  Loader2Icon,
-  SearchIcon,
-  SparklesIcon,
-  TrophyIcon,
-} from "lucide-react"
+import { ArrowRightIcon, CheckIcon, SearchIcon } from "lucide-react"
 
 import { useCourses } from "@/lib/providers/courses"
 import { useUser } from "@/lib/providers/user"
-import { formatCourseDuration, formatCoursePrice } from "@/lib/helpers"
-import { Button } from "@/lib/ui/useable-components/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/lib/ui/useable-components/card"
-import { Input } from "@/lib/ui/useable-components/input"
-import { Icons } from "@/utils/constants"
+import { cn, formatCourseDuration, formatCoursePrice } from "@/lib/helpers"
+import { PageIntro, siteButton, siteContainer } from "@/lib/ui/useable-components/site-chrome/ui"
 import { CONFIG } from "@/utils/constants/config"
-import { COURSE_DISPLAY_BY_SLUG } from "@/utils/constants/course-display"
 
 export const PublicCoursesScreen = () => {
-  const router = useRouter()
   const { courses, loading: coursesLoading } = useCourses()
   const { enrolledCoursesFromApi, requestedCoursesFromApi } = useUser()
   const [searchQuery, setSearchQuery] = useState("")
 
-  const enrolledCourseIds = useMemo(
-    () => new Set(enrolledCoursesFromApi?.map((c) => c.id).filter(Boolean) ?? []),
+  const enrolled = useMemo(
+    () => new Set((enrolledCoursesFromApi ?? []).flatMap((c) => [c.id, c.slug]).filter(Boolean)),
     [enrolledCoursesFromApi]
   )
-  const enrolledCourseSlugs = useMemo(
-    () => new Set(enrolledCoursesFromApi?.map((c) => c.slug).filter(Boolean) ?? []),
-    [enrolledCoursesFromApi]
-  )
-  const requestedCourseIds = useMemo(
-    () => new Set(requestedCoursesFromApi?.map((c) => c.id).filter(Boolean) ?? []),
-    [requestedCoursesFromApi]
-  )
-  const requestedCourseSlugs = useMemo(
-    () => new Set(requestedCoursesFromApi?.map((c) => c.slug).filter(Boolean) ?? []),
+  const requested = useMemo(
+    () => new Set((requestedCoursesFromApi ?? []).flatMap((c) => [c.id, c.slug]).filter(Boolean)),
     [requestedCoursesFromApi]
   )
 
   const catalog = useMemo(
     () =>
-      courses.map((course) => {
-        const display = COURSE_DISPLAY_BY_SLUG[course.slug] ?? { icon: "code", benefits: [] }
-        const projects = course.modules?.[0]?.projects ?? []
-        return {
-          id: course.id,
-          slug: course.slug,
-          title: course.title,
-          description: course.subtitle,
-          price: formatCoursePrice(course),
-          duration: formatCourseDuration(course),
-          icon: Icons[display?.icon ?? "code"] ?? Icons.code,
-          highlight: display?.highlight,
-          benefits: (display?.benefits?.length ? display.benefits : projects.map((p) => p.title).slice(0, 3)) ?? [],
-        }
-      }),
+      courses.map((course) => ({
+        id: course.id,
+        slug: course.slug,
+        title: course.title,
+        subtitle: course.subtitle,
+        tools: course.technologiesSection.technologies.map((t) => t.label),
+        price: formatCoursePrice(course),
+        duration: formatCourseDuration(course),
+      })),
     [courses]
   )
 
-  const filteredCatalog = useMemo(() => {
-    if (!searchQuery.trim()) return catalog
-
-    const query = searchQuery.toLowerCase().trim()
-
-    return catalog.filter((course) => {
-      // Search in title
-      if (course.title.toLowerCase().includes(query)) return true
-
-      // Search in description
-      if (course.description.toLowerCase().includes(query)) return true
-
-      // Search in duration
-      if (course.duration.toLowerCase().includes(query)) return true
-
-      // Search in price
-      if (course.price.toLowerCase().includes(query)) return true
-
-      // Search in highlight
-      if (course.highlight?.toLowerCase().includes(query)) return true
-
-      // Search in benefits
-      if (course.benefits.some((benefit) => benefit.toLowerCase().includes(query))) return true
-
-      return false
-    })
+  const filtered = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim()
+    if (!q) return catalog
+    return catalog.filter((c) =>
+      [c.title, c.subtitle, c.duration, c.price, ...c.tools].some((v) => v.toLowerCase().includes(q))
+    )
   }, [searchQuery, catalog])
 
   return (
-    <div className="w-full px-4 py-12 sm:px-6 lg:px-8 2xl:px-10">
-      <div className="mx-auto max-w-6xl space-y-10">
-        <div className="space-y-2">
-          <div className="text-sm font-semibold text-secondary">Courses</div>
-          <h1 className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
-            Choose a course and start building.
-          </h1>
-          <p className="text-muted-foreground max-w-2xl text-pretty text-lg leading-8">
-            Every course includes lectures, assignments, a submission flow, marks tracking, and career support for high-performing students.
-          </p>
-        </div>
-
-        <div className="relative max-w-md">
-          <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search courses, skills, or benefits..."
+    <div className="w-full">
+      <PageIntro
+        label="// courses"
+        title="Pick a track. Ship real projects."
+        description="Every course includes live lessons, assignments, a submission flow, marks on your dashboard and career support for top performers."
+      >
+        <label className="border-border bg-background focus-within:border-(--site-accent) flex w-full max-w-sm items-center gap-2 rounded-md border px-3 py-2.5 text-sm transition-colors">
+          <SearchIcon className="text-muted-foreground size-4" aria-hidden />
+          <span className="sr-only">Search courses</span>
+          <input
+            type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            placeholder="Search courses or tools…"
+            className="placeholder:text-muted-foreground w-full bg-transparent outline-none"
           />
-        </div>
+        </label>
+      </PageIntro>
 
-        {coursesLoading && catalog.length === 0 ? (
-          <div className="flex min-h-[400px] items-center justify-center rounded-3xl border bg-background/70 backdrop-blur">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2Icon className="size-6 animate-spin" />
-              <span>Loading courses...</span>
-            </div>
+      <section className="py-14 sm:py-20">
+        <div className={siteContainer}>
+          <div className="text-muted-foreground mb-4 font-mono text-[11px]">
+            {coursesLoading && !catalog.length ? "loading courses…" : `${filtered.length} of ${catalog.length} courses`}
           </div>
-        ) : filteredCatalog.length === 0 ? (
-          <div className="flex min-h-[400px] items-center justify-center rounded-3xl border bg-background/70 backdrop-blur">
-            <div className="text-center">
-              <SearchIcon className="mx-auto size-12 text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-semibold">No courses found</h3>
-              <p className="text-muted-foreground mt-2 text-sm">
-                Try adjusting your search to find what you&apos;re looking for.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
-            {filteredCatalog.map((c) => (
-              <div
-                key={c.slug}
-                className="group rounded-3xl bg-[linear-gradient(135deg,rgba(79,195,232,0.35),rgba(242,140,40,0.20),transparent_70%)] p-px transition-all hover:-translate-y-0.5 hover:shadow-xl"
-              >
-                <Link href={`/courses/${c.slug}`} className="block">
-                  <Card className="bg-background/70 backdrop-blur supports-backdrop-filter:bg-background/60 rounded-3xl overflow-hidden cursor-pointer h-full">
-                  <div className="pointer-events-none relative h-1.5 w-full bg-[linear-gradient(to_right,rgba(79,195,232,0.7),rgba(242,140,40,0.6))] opacity-70 transition-opacity group-hover:opacity-100" />
-                  <CardHeader className="space-y-4">
-                    <div className="flex items-start gap-3">
-                      <div className="relative shrink-0">
-                        <div className="pointer-events-none absolute -inset-1 rounded-3xl bg-[radial-gradient(circle_at_top,rgba(70,208,255,0.35),transparent_60%)] opacity-0 blur-md transition-opacity group-hover:opacity-100" />
-                        <span className="bg-(--brand-primary) text-(--text-on-dark) inline-flex size-12 items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-[1.03]">
-                          <c.icon className="size-5" />
-                        </span>
-                      </div>
-                      <div className="min-w-0">
-                        <CardTitle className="text-xl">{c.title}</CardTitle>
-                        <CardDescription className="text-sm leading-6">{c.description}</CardDescription>
-                        <div className="text-muted-foreground mt-2 text-xs">
-                          Duration: <span className="font-semibold">{c.duration}</span>
-                        </div>
-                      </div>
-                      {!!c.highlight && (
-                        <span className="bg-(--brand-secondary) text-(--text-on-dark) ml-auto inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold">
-                          <SparklesIcon className="size-3.5" />
-                          {c.highlight}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-2xl border bg-background/45 p-3">
-                        <div className="flex items-center gap-2 text-sm font-semibold">
-                          <TrophyIcon className="size-4 text-(--brand-highlight)" />
-                          Outcomes
-                        </div>
-                        <div className="mt-2 space-y-1 text-sm">
-                          {c.benefits.map((b) => (
-                            <div key={b} className="flex items-start gap-2">
-                              <FileCheck2Icon className="mt-0.5 size-4 text-(--brand-highlight)" />
-                              <div className="text-muted-foreground leading-6">{b}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="rounded-2xl border bg-background/45 p-3">
-                        <div className="flex items-center gap-2 text-sm font-semibold">
-                          <BriefcaseIcon className="size-4 text-(--brand-accent)" />
-                          Built for careers
-                        </div>
-                        <div className="text-muted-foreground mt-2 text-sm leading-6">
-                          Assignments + marks keep you accountable. Top performers get career support to start strong.
-                        </div>
+          <ul className="border-border border-t">
+            {!coursesLoading && !filtered.length && (
+              <li className="text-muted-foreground border-border border-b py-10 text-sm">
+                {catalog.length ? "No course matches your search." : "No courses to show right now."}
+              </li>
+            )}
+            {filtered.map((c, i) => {
+              const isEnrolled = (c.id && enrolled.has(c.id)) || enrolled.has(c.slug)
+              const isRequested = (c.id && requested.has(c.id)) || requested.has(c.slug)
+              return (
+                <li key={c.slug} className="border-border border-b py-6 sm:py-8">
+                  <div className="grid gap-4 sm:grid-cols-[3rem_minmax(0,1fr)_auto] sm:items-center sm:gap-6">
+                    <span className="text-muted-foreground font-mono text-[10px]">
+                      T.{String(i + 1).padStart(2, "0")}
+                    </span>
+                    <div className="min-w-0">
+                      <Link
+                        href={`${CONFIG.ROUTES.PUBLIC.COURSES}/${c.slug}`}
+                        className="text-xl font-semibold tracking-tight transition-colors hover:text-(--site-accent) sm:text-2xl"
+                      >
+                        {c.title}
+                      </Link>
+                      <p className="text-muted-foreground mt-1 max-w-2xl text-sm leading-relaxed">{c.subtitle}</p>
+                      <div className="text-muted-foreground mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px]">
+                        <span>{c.duration}</span>
+                        <span>{c.price}</span>
+                        {c.tools.length > 0 && <span>{c.tools.slice(0, 5).join(" · ")}</span>}
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <div className="text-3xl font-semibold tracking-tight">{c.price}</div>
-                      <div className="text-muted-foreground text-xs">
-                        Designed to upgrade you fast — projects, discipline, and outcomes.
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-foreground shrink-0 whitespace-nowrap inline-flex items-center gap-2 rounded-full border border-border bg-transparent px-4 py-2 text-sm font-medium">
-                        View details
-                      </span>
-                      {(c.id && enrolledCourseIds.has(c.id)) || enrolledCourseSlugs.has(c.slug) ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted-surface px-3 py-1.5 text-xs font-semibold text-muted-foreground">
-                          <CheckCircle2Icon className="size-3.5 shrink-0" />
-                          Already enrolled
-                        </span>
-                      ) : (c.id && requestedCourseIds.has(c.id)) || requestedCourseSlugs.has(c.slug) ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted-surface px-3 py-1.5 text-xs font-semibold text-muted-foreground">
-                          <CheckCircle2Icon className="size-3.5 shrink-0" />
-                          You&apos;ve already requested
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link href={`${CONFIG.ROUTES.PUBLIC.COURSES}/${c.slug}`} className={siteButton.outline}>
+                        Details
+                      </Link>
+                      {isEnrolled || isRequested ? (
+                        <span className="text-muted-foreground inline-flex items-center gap-1.5 px-2 font-mono text-[11px]">
+                          <CheckIcon className="size-3.5" aria-hidden />
+                          {isEnrolled ? "enrolled" : "requested"}
                         </span>
                       ) : (
-                        <Button
-                          type="button"
-                          variant="brand-secondary"
-                          shape="pill"
-                          className="shrink-0"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            router.push(`${CONFIG.ROUTES.PUBLIC.ENROLLMENT}?course=${encodeURIComponent(c.slug)}`)
-                          }}
+                        <Link
+                          href={`${CONFIG.ROUTES.PUBLIC.ENROLLMENT}?course=${encodeURIComponent(c.slug)}`}
+                          className={cn(siteButton.primary)}
                         >
-                          Enroll now
-                          <ArrowRightIcon className="size-4" />
-                        </Button>
+                          Enroll <ArrowRightIcon className="size-4" aria-hidden />
+                        </Link>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
-                </Link>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      </section>
     </div>
   )
 }
-

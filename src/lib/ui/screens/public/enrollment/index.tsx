@@ -2,58 +2,71 @@
 
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { GraduationCapIcon } from "lucide-react"
 
+import { cn } from "@/lib/helpers"
 import { useCourses } from "@/lib/providers/courses"
 import { CONFIG } from "@/utils/constants"
 import { EnrollmentFormCard } from "@/lib/ui/screens/public/enrollment/enrollment-form-card"
-import { Button } from "@/lib/ui/useable-components/button"
+import { SectionLabel, siteContainer, siteDotGrid } from "@/lib/ui/useable-components/site-chrome/ui"
 
 export { EnrollmentFormCard } from "@/lib/ui/screens/public/enrollment/enrollment-form-card"
+
+const STEPS = [
+  "Fill in your details",
+  "Pick course(s) and how you'll pay",
+  "Pay the amount shown and upload the receipt",
+  "We confirm your payment and activate your account",
+]
 
 export function PublicEnrollmentScreen() {
   const searchParams = useSearchParams()
   const courseSlug = searchParams.get("course")
   const { getCourseBySlug } = useCourses()
   const course = courseSlug ? getCourseBySlug(courseSlug) : undefined
-  const initialCourse =
-    course != null ? { slug: course.slug, title: course.title } : null
+  const initialCourse = course != null ? { slug: course.slug, title: course.title } : null
 
   return (
-    <div className="w-full px-4 py-12 sm:px-6 lg:px-8 2xl:px-10">
-      <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute -top-24 left-1/2 h-144 w-240 -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgba(70,208,255,0.18),transparent_60%)] blur-3xl" />
-        <div className="absolute -bottom-32 -right-24 h-112 w-md rounded-full bg-[radial-gradient(circle_at_center,rgba(255,138,61,0.14),transparent_65%)] blur-3xl" />
-      </div>
-
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-10 space-y-4">
-          <div className="inline-flex items-center gap-2 rounded-full border bg-background/60 px-3 py-1 text-xs font-semibold">
-            <GraduationCapIcon className="size-3.5 text-(--brand-highlight)" />
-            Enrollment
-          </div>
-          <h1 className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl">Enroll in a course</h1>
-          <p className="text-muted-foreground max-w-2xl text-pretty text-lg leading-8">
-            Complete your details, confirm course selection, pay the first fee total shown, and upload your payment screenshot.
-            Your account stays pending until an administrator approves it.
+    <section className={cn("border-border/60 border-b", siteDotGrid)}>
+      <div className={cn(siteContainer, "grid gap-12 py-14 sm:py-20 lg:grid-cols-[0.8fr_1.2fr] lg:items-start")}>
+        <div className="lg:sticky lg:top-24">
+          <SectionLabel>{"// enrollment"}</SectionLabel>
+          <h1 className="mt-4 text-balance text-4xl font-semibold leading-[1.05] tracking-[-0.04em] sm:text-[3.25rem]">
+            Enroll in a few steps.
+          </h1>
+          <p className="text-muted-foreground mt-5 max-w-md text-[15px] leading-relaxed">
+            Pick your course, pay the fee and upload your receipt. We activate your account as soon as the payment is confirmed.
           </p>
-          {initialCourse ? (
-            <p className="text-foreground text-sm font-medium">
-              Selected course: <span className="text-(--brand-highlight)">{initialCourse.title}</span> — you can add or change
-              courses in the form.
+          {initialCourse && (
+            <p className="mt-4 text-sm">
+              Selected: <span className="font-semibold text-(--site-accent)">{initialCourse.title}</span>. You can add or
+              change courses in the form.
             </p>
-          ) : null}
-          <Button asChild variant="outline" shape="pill" size="sm">
-            <Link href={CONFIG.ROUTES.PUBLIC.COURSES}>Browse all courses</Link>
-          </Button>
+          )}
+          <ol className="border-border mt-8 border-t">
+            {STEPS.map((s, i) => (
+              <li key={s} className="border-border flex gap-4 border-b py-2.5 font-mono text-xs">
+                <span className="text-(--site-accent)">{String(i + 1).padStart(2, "0")}</span>
+                {s}
+              </li>
+            ))}
+          </ol>
+          <Link
+            href={CONFIG.ROUTES.PUBLIC.COURSES}
+            className="text-muted-foreground hover:text-foreground mt-6 inline-block font-mono text-[11px]"
+          >
+            browse all courses →
+          </Link>
         </div>
 
-        <div className="rounded-3xl bg-[linear-gradient(135deg,rgba(70,208,255,0.25),rgba(255,138,61,0.14),transparent_70%)] p-px">
-          <div className="bg-background/70 backdrop-blur supports-backdrop-filter:bg-background/60 rounded-3xl p-6 sm:p-8">
+        <div className="border-border bg-card rounded-xl border shadow-[0_24px_60px_-28px_rgba(15,15,40,0.35)]">
+          <div className="border-border text-muted-foreground border-b px-6 py-3 font-mono text-[10px]">
+            enrollment form · reviewed by an admin
+          </div>
+          <div className="p-6 sm:p-8">
             <EnrollmentFormCard initialCourse={initialCourse} variant="page" />
           </div>
         </div>
       </div>
-    </div>
+    </section>
   )
 }

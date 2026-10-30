@@ -10,7 +10,7 @@ export function formatCourseDuration(course: ICourse): string {
 /** Format course price for display (e.g. "PKR 30,000 (full or 2 installments)"). */
 export function formatCoursePrice(course: ICourse): string {
   const { currency, totalFee } = course
-  return `${currency} ${(totalFee ?? 0).toLocaleString()} (full or 2 installments)`
+  return `${currency} ${(totalFee ?? 0).toLocaleString()}`
 }
 
 /** API course shape (GraphQL) – technologies at top level, no modules. */

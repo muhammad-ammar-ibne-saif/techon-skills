@@ -5,24 +5,35 @@ import { useMemo } from "react"
 import { useCourses } from "@/lib/providers/courses"
 import type { IContactFormCourse } from "@/utils/interfaces"
 import { cn } from "@/lib/helpers"
+import { firstPaymentFor, type EnrollmentPaymentPlan } from "@/lib/helpers/contact-form"
 
 type ContactCourseFeesSummaryProps = {
   selectedCourses: IContactFormCourse[]
+  paymentPlan: EnrollmentPaymentPlan
+  /** MORE_INSTALLMENTS only. */
+  requestedInstallments: number
   className?: string
 }
 
 /**
- * Shows the first installment (half of the course fee; fees are paid in full or in 2 installments)
- * per selected course and a running total.
+ * Shows what is paid now for each selected course under the chosen payment plan, and the total.
  * Placed below course multi-select; student uploads one screenshot for the combined payment.
  */
-export function ContactCourseFeesSummary({ selectedCourses, className }: ContactCourseFeesSummaryProps) {
+export function ContactCourseFeesSummary({
+  selectedCourses,
+  paymentPlan,
+  requestedInstallments,
+  className,
+}: ContactCourseFeesSummaryProps) {
   const { getCourseBySlug } = useCourses()
 
   const { rows, total, currency, canSum, mixedCurrency } = useMemo(() => {
     const resolved = selectedCourses.map((c) => {
       const full = getCourseBySlug(c.slug)
-      const fee = typeof full?.totalFee === "number" ? Math.ceil(full.totalFee / 2) : undefined
+      const fee =
+        typeof full?.totalFee === "number"
+          ? firstPaymentFor(full.totalFee, paymentPlan, requestedInstallments)
+          : undefined
       const cur = (full?.currency ?? "PKR").trim() || "PKR"
       return { slug: c.slug, title: c.title, fee, currency: cur }
     })
@@ -39,7 +50,7 @@ export function ContactCourseFeesSummary({ selectedCourses, className }: Contact
       canSum: !mixed && sum !== null,
       mixedCurrency: mixed,
     }
-  }, [selectedCourses, getCourseBySlug])
+  }, [selectedCourses, getCourseBySlug, paymentPlan, requestedInstallments])
 
   if (selectedCourses.length === 0) return null
 
@@ -50,7 +61,9 @@ export function ContactCourseFeesSummary({ selectedCourses, className }: Contact
         className
       )}
     >
-      <div className="text-foreground mb-2 font-semibold">First installment (per course)</div>
+      <div className="text-foreground mb-2 font-semibold">
+        {paymentPlan === "FULL" ? "Full fee (per course)" : "First installment (per course)"}
+      </div>
       <ul className="text-muted-foreground space-y-1.5">
         {rows.map((r) => (
           <li key={r.slug} className="flex items-start justify-between gap-3">
@@ -64,7 +77,7 @@ export function ContactCourseFeesSummary({ selectedCourses, className }: Contact
         ))}
       </ul>
       <div className="border-border mt-3 flex items-center justify-between gap-3 border-t pt-3">
-        <span className="text-foreground font-semibold">Total (first payment)</span>
+        <span className="text-foreground font-semibold">Pay now</span>
         <span className="text-foreground text-base font-semibold tabular-nums">
           {canSum && total !== null ? `${currency} ${total.toLocaleString()}` : "—"}
         </span>
@@ -75,7 +88,12 @@ export function ContactCourseFeesSummary({ selectedCourses, className }: Contact
         </p>
       )}
       <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-        Each course is paid in 2 installments (or pay the full fee at once). Pay this total, then upload one screenshot of the transfer below.
+        {paymentPlan === "FULL"
+          ? "You pay the whole fee now."
+          : paymentPlan === "MORE_INSTALLMENTS"
+            ? `You're asking for ${requestedInstallments} monthly installments. We'll confirm the schedule when we approve your application.`
+            : "The second installment is due one month later."}{" "}
+        Pay this total, then upload one screenshot of the transfer below.
       </p>
     </div>
   )

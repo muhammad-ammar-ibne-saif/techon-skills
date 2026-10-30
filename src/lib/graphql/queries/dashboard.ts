@@ -43,3 +43,16 @@ export const GET_ADMIN_DASHBOARD = gql`
     }
   }
 `;
+
+export const GET_PUBLIC_SITE_STATS = gql`
+    query GetPublicSiteStats {
+        publicSiteStats {
+            students
+            projectsMarked
+            mentors
+            courses
+            lowestCourseFee
+            currency
+        }
+    }
+`;

@@ -16,6 +16,7 @@ export const CONFIG = {
         SESSION: {
             CONTACT_FORM_SUBMITTED: "techon_session_contact_form_submitted",
             ENROLLMENT_FORM_SUBMITTED: "techon_session_enrollment_form_submitted",
+            PROFILE_ALERT_DISMISSED: "techon_session_profile_alert_dismissed",
         },
     },
     BACKEND_PATHS: {

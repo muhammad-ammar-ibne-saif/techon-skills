@@ -21,7 +21,8 @@ type Mode = "password" | "link"
 
 type LoginData = { user?: IUserProfileInfo; accessToken?: string; passwordNotSet?: boolean }
 
-export const ContinueToDashboardDialog = ({ className }: { className?: string }) => {
+/** `plain` renders a text-style "Log in" / "Dashboard" trigger styled only by `className` (home page nav). */
+export const ContinueToDashboardDialog = ({ className, plain = false }: { className?: string; plain?: boolean }) => {
   const { userProfileInfo, refetchProfile } = useUser()
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -124,6 +125,13 @@ export const ContinueToDashboardDialog = ({ className }: { className?: string })
   }
 
   if (dashboardHref) {
+    if (plain) {
+      return (
+        <Link href={dashboardHref} className={className}>
+          Dashboard
+        </Link>
+      )
+    }
     return (
       <Button asChild variant="brand-secondary" shape="pill" className={cn("px-3 sm:px-4", className)}>
         <Link href={dashboardHref}>
@@ -143,10 +151,16 @@ export const ContinueToDashboardDialog = ({ className }: { className?: string })
       if (!v) resetDialog()
     }}>
       <DialogPrimitive.Trigger asChild>
-        <Button variant="brand-secondary" shape="pill" className={cn("max-w-46 px-3 sm:max-w-none sm:px-4", className)}>
-          <span className="sm:hidden">Dashboard</span>
-          <span className="hidden sm:inline">Continue to dashboard</span>
-        </Button>
+        {plain ? (
+          <button type="button" className={className}>
+            Log in
+          </button>
+        ) : (
+          <Button variant="brand-secondary" shape="pill" className={cn("max-w-46 px-3 sm:max-w-none sm:px-4", className)}>
+            <span className="sm:hidden">Dashboard</span>
+            <span className="hidden sm:inline">Continue to dashboard</span>
+          </Button>
+        )}
       </DialogPrimitive.Trigger>
 
       <DialogPrimitive.Portal>

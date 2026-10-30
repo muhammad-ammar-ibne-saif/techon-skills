@@ -29,6 +29,8 @@ button:disabled,
   --brand-secondary:  #1b77b6;
   --brand-accent:     #ff8a3d;
   --brand-highlight:  #0ea5e9;
+  /* Public site accent (home, courses, articles...). */
+  --site-accent:      #4b48f2;
 
   /* ─── Light Palette ────────────────────────────────────────── */
   /* Backgrounds: white → off-white → very-light-blue tiers       */
@@ -440,6 +442,7 @@ button:disabled,
    .dark utility override (Tailwind class-based dark mode)
 ═══════════════════════════════════════════════════════════════ */
 .dark {
+  --site-accent:         #7b78ff;
   --background:          var(--background-dark);
   --foreground:          var(--text-primary-dark);
   --card:                var(--background-surface-dark);
@@ -478,6 +481,129 @@ body {
 @keyframes soft-glow {
   0%, 100% { opacity: 0.25; }
   50%       { opacity: 0.60; }
+}
+
+/* Public site motion: page fade, staggered intro, scroll reveal. Off for reduced-motion users. */
+@keyframes site-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes site-reveal {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+
+  .site-intro > * {
+    animation: site-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .site-intro > :nth-child(2) { animation-delay: 0.07s; }
+  .site-intro > :nth-child(3) { animation-delay: 0.14s; }
+  .site-intro > :nth-child(4) { animation-delay: 0.21s; }
+  .site-intro > :nth-child(n + 5) { animation-delay: 0.28s; }
+
+  .site-hero-art {
+    animation: site-fade-up 0.8s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .site-hero-art > div {
+    animation: tech-float 7s 1s ease-in-out infinite;
+  }
+
+  /* Home "what you build" cards: small looping demos (static for reduced-motion users). */
+  .build-type { transform-origin: left; animation: build-type 5s ease-in-out infinite; }
+  .build-type-2 { animation-delay: 0.25s; }
+  .build-type-3 { animation-delay: 0.5s; }
+  .build-press { animation: build-press 5s ease-in-out infinite; }
+  .build-cursor { display: block; animation: build-cursor 5s ease-in-out infinite; }
+
+  .build-msg-1 { animation: build-msg-1 6s ease-out infinite; }
+  .build-typing { animation: build-typing 6s ease-out infinite; }
+  .build-typing > span { animation: build-dot 0.9s ease-in-out infinite; }
+  .build-typing > span:nth-child(2) { animation-delay: 0.15s; }
+  .build-typing > span:nth-child(3) { animation-delay: 0.3s; }
+  .build-msg-2 { animation: build-msg-2 6s ease-out infinite; }
+
+  .build-bar { transform-origin: bottom; animation: build-bar 3.6s ease-in-out infinite; }
+
+  .build-tile { animation: build-tile 4.8s ease-in-out infinite; }
+  .build-tile-2 { animation-delay: 0.4s; }
+  .build-tile-3 { animation-delay: 0.8s; }
+  .build-fill { animation: build-fill 4.8s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+
+  /* Content fades up as it scrolls into view (browsers without scroll timelines just show it). */
+  @supports (animation-timeline: view()) {
+    .site-main section:not(:first-child) > div > *,
+    .site-main section li {
+      animation: site-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 40%;
+    }
+    .site-main section li {
+      animation-range: entry 0% entry 25%;
+    }
+  }
+}
+
+@keyframes build-type {
+  0%        { transform: scaleX(0); }
+  25%, 85%  { transform: scaleX(1); }
+  100%      { transform: scaleX(0); }
+}
+
+@keyframes build-press {
+  0%, 52%, 70%, 100% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
+  58% { transform: scale(0.93); box-shadow: 0 0 0 3px color-mix(in oklab, var(--site-accent) 30%, transparent); }
+}
+
+@keyframes build-cursor {
+  0%       { transform: translate(46px, 26px); opacity: 0; }
+  15%      { opacity: 1; }
+  50%      { transform: translate(0, 0); }
+  58%      { transform: translate(0, 0) scale(0.8); }
+  66%      { transform: translate(0, 0) scale(1); opacity: 1; }
+  90%,100% { transform: translate(0, 0); opacity: 0; }
+}
+
+@keyframes build-msg-1 {
+  0%       { opacity: 0; transform: translateY(6px) scale(0.96); }
+  8%, 88%  { opacity: 1; transform: none; }
+  100%     { opacity: 0; }
+}
+
+@keyframes build-typing {
+  0%, 14%  { opacity: 0; }
+  18%, 36% { opacity: 1; }
+  40%,100% { opacity: 0; }
+}
+
+@keyframes build-dot {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50%      { transform: translateY(-2px); opacity: 1; }
+}
+
+@keyframes build-msg-2 {
+  0%, 38%  { opacity: 0; transform: translateY(6px) scale(0.96); }
+  46%, 88% { opacity: 1; transform: none; }
+  100%     { opacity: 0; }
+}
+
+@keyframes build-bar {
+  0%, 100% { transform: scaleY(0.55); }
+  50%      { transform: scaleY(1); }
+}
+
+@keyframes build-tile {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+@keyframes build-fill {
+  0%, 20%  { transform: scale(0); }
+  45%, 80% { transform: scale(1); }
+  100%     { transform: scale(0); }
 }
 
 @keyframes form-success-pop {
