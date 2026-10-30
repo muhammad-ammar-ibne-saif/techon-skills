@@ -7,7 +7,7 @@ export const FEES_DATA: IFeeEntry[] = [
 ]
 
 export const BANK_DETAILS = {
-  accountNumber: "56275002185883",
-  bankName: "Bank Alfalah",
-  accountTitle: "Ahmad Raza",
+  accountNumber: "03257720992",
+  bankName: "NayaPay",
+  accountTitle: "Saeed ur Rehman",
 } as const

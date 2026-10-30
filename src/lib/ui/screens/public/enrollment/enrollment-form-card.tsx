@@ -4,6 +4,7 @@ import type { FormEvent } from "react"
 import { startTransition, useEffect, useState } from "react"
 import { Formik, getIn, type FormikTouched } from "formik"
 import toast from "react-hot-toast"
+import { CopyIcon, WalletIcon } from "lucide-react"
 
 import { cn, getApiDisplayMessage, logger } from "@/lib/helpers"
 import {
@@ -26,7 +27,7 @@ import { PhoneInput, getFullPhone, type PhoneValue } from "@/lib/ui/useable-comp
 import { Separator } from "@/lib/ui/useable-components/separator"
 import { Textarea } from "@/lib/ui/useable-components/textarea"
 import { FormSubmitSuccess } from "@/lib/ui/useable-components/form-submit-success"
-import { CONFIG, SITE_PHONE_DISPLAY, SITE_WHATSAPP_URL } from "@/utils/constants"
+import { CONFIG, PAYMENT_BANK_DETAILS, SITE_PHONE_DISPLAY, SITE_WHATSAPP_URL } from "@/utils/constants"
 import type { IContactFormCourse, IEnrollmentApplicationSubmit } from "@/utils/interfaces"
 import { LoggerLevel } from "@/utils/enums"
 
@@ -90,6 +91,49 @@ function PaymentPlanOptions({
           <span className="text-muted-foreground text-xs">{amounts(o.value) ?? o.hint}</span>
         </label>
       ))}
+    </div>
+  )
+}
+
+/** Where to send the fee, so applicants can pay before uploading the screenshot. */
+function PaymentAccountCard() {
+  const { accountNumber, bankName, accountTitle } = PAYMENT_BANK_DETAILS
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(accountNumber)
+      toast.success("Account number copied")
+    } catch {
+      toast.error("Couldn't copy. Please copy the number by hand.")
+    }
+  }
+  return (
+    <div className="border-(--brand-primary)/30 bg-(--brand-primary)/5 w-full rounded-2xl border px-4 py-3 text-sm">
+      <div className="text-foreground mb-2 flex items-center gap-2 font-semibold">
+        <WalletIcon className="text-(--brand-primary) size-4" />
+        Send the fee to this {bankName} account
+      </div>
+      <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1.5">
+        <dt className="text-muted-foreground">Account title</dt>
+        <dd className="font-medium">{accountTitle}</dd>
+        <dt className="text-muted-foreground">Account number</dt>
+        <dd className="flex items-center gap-1.5">
+          <span className="font-mono text-base font-semibold tracking-wide">{accountNumber}</span>
+          <button
+            type="button"
+            onClick={copy}
+            className="text-muted-foreground hover:text-foreground rounded-md p-1 transition-colors"
+            aria-label="Copy account number"
+            title="Copy account number"
+          >
+            <CopyIcon className="size-4" />
+          </button>
+        </dd>
+        <dt className="text-muted-foreground">Bank / wallet</dt>
+        <dd className="font-medium">{bankName}</dd>
+      </dl>
+      <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+        Pay from NayaPay, JazzCash, Easypaisa or any bank app, then upload the screenshot below.
+      </p>
     </div>
   )
 }
@@ -324,6 +368,7 @@ export function EnrollmentFormCard({
               className="mt-3"
             />
           </fieldset>
+          <PaymentAccountCard />
           <div className="w-full">
             <div className="text-muted-foreground mb-1.5 text-xs font-medium">Fee payment screenshot *</div>
             <input

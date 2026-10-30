@@ -362,13 +362,13 @@ export const StudentFeesScreen = () => {
                 <div className="mb-6">
                   <div className="text-primary text-xl font-semibold">Payment details</div>
                   <div className="text-muted-foreground text-sm">
-                    Transfer fees to this bank account.
+                    Send your fee to this {bankDetails.bankName} account from NayaPay, any bank app or wallet.
                   </div>
                 </div>
 
                 <Card className="bg-background/60 backdrop-blur supports-backdrop-filter:bg-background/50 rounded-3xl">
                   <CardHeader>
-                    <CardTitle className="text-base">Bank Account</CardTitle>
+                    <CardTitle className="text-base">Payment account</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="rounded-2xl border bg-background/40 p-4">
@@ -390,7 +390,7 @@ export const StudentFeesScreen = () => {
                     </div>
 
                     <div className="rounded-2xl border bg-background/40 p-4">
-                      <div className="text-muted-foreground text-xs">Bank Name</div>
+                      <div className="text-muted-foreground text-xs">Bank / wallet</div>
                       <div className="mt-1 font-semibold">{bankDetails.bankName || "—"}</div>
                     </div>
 
