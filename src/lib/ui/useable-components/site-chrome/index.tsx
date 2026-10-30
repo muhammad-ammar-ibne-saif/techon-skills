@@ -195,7 +195,7 @@ export function SiteFooter() {
 
         <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <Image src={TechOnLogo} alt="TechOn Skills" width={40} height={40} className="size-10 shrink-0" />
+            <Image src={TechOnLogo} alt="TechOn Skills" width={40} height={40} className="size-10 shrink-0 opacity-90 brightness-0 invert" />
             <p className="font-mono text-[10px] leading-relaxed text-white/45">
               © {new Date().getFullYear()} TechOn Skills · Cloudrika Technologies, Lahore ·{" "}
               <a href={SITE_PHONE_TEL_HREF} className="hover:text-white">

@@ -485,9 +485,57 @@ function Stars({ rating, className }: { rating: number; className?: string }) {
   )
 }
 
-/** 4 Google reviews (fixed list in utils/constants/google-reviews.ts) and a link to write one on Google. */
+function GoogleMark({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "flex shrink-0 items-center justify-center rounded-full bg-white font-bold shadow-sm ring-1 ring-black/5",
+        className
+      )}
+    >
+      <span className="bg-[conic-gradient(#ea4335_0_25%,#fbbc05_0_50%,#34a853_0_75%,#4285f4_0)] bg-clip-text text-transparent">
+        G
+      </span>
+    </span>
+  )
+}
+
+const AVATAR_COLORS = ["#1a5fb4", "#8d6e63", "#c2410c", "#ea580c", "#5b5bd6", "#0f766e", "#be185d", "#4d7c0f", "#7c3aed"]
+
+function avatarColor(name: string) {
+  let hash = 0
+  for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length]
+}
+
+function ReviewCard({ review }: { review: (typeof GOOGLE_REVIEWS)[number] }) {
+  return (
+    <li className="border-border bg-card flex h-56 w-[17.5rem] shrink-0 flex-col rounded-xl border p-5 shadow-sm sm:w-[19rem]">
+      <div className="flex items-center gap-3">
+        <span className="relative shrink-0">
+          <span
+            className="flex size-10 items-center justify-center rounded-full text-base font-semibold text-white"
+            style={{ backgroundColor: avatarColor(review.authorName) }}
+          >
+            {review.authorName.charAt(0).toUpperCase()}
+          </span>
+          <GoogleMark className="absolute -right-1 -bottom-1 size-4 text-[9px]" />
+        </span>
+        <span className="truncate text-[15px] font-medium">{review.authorName}</span>
+      </div>
+      <Stars rating={review.rating} className="mt-3" />
+      <p className="text-foreground/80 mt-2 line-clamp-4 text-sm leading-relaxed">{review.text}</p>
+      <div className="text-muted-foreground mt-auto pt-2 text-right font-mono text-[10px]">
+        {review.relativeTime ?? "Google review"}
+      </div>
+    </li>
+  )
+}
+
+/** Google reviews (fixed list in utils/constants/google-reviews.ts) in an auto-moving row, plus a link to write one. */
 function GoogleReviews() {
-  const reviews = GOOGLE_REVIEWS.slice(0, 4)
+  const reviews = GOOGLE_REVIEWS
   if (reviews.length === 0 && !GOOGLE_WRITE_REVIEW_URL) return null
 
   return (
@@ -497,11 +545,7 @@ function GoogleReviews() {
           <div className="text-muted-foreground font-mono text-[10px]">google reviews</div>
           <div className="mt-2 text-xl font-semibold tracking-tight">What our students say</div>
           <div className="border-border bg-card mt-3 inline-flex items-center gap-2.5 rounded-full border py-1.5 pr-4 pl-1.5 shadow-sm">
-            <span className="flex size-7 items-center justify-center rounded-full bg-white text-sm font-bold shadow-sm ring-1 ring-black/5">
-              <span className="bg-[conic-gradient(#ea4335_0_25%,#fbbc05_0_50%,#34a853_0_75%,#4285f4_0)] bg-clip-text text-transparent">
-                G
-              </span>
-            </span>
+            <GoogleMark className="size-7 text-sm" />
             <span className="text-lg font-semibold tabular-nums">{GOOGLE_RATING.toFixed(1)}</span>
             <Stars rating={GOOGLE_RATING} />
             <span className="text-muted-foreground text-xs">rating on Google</span>
@@ -515,28 +559,17 @@ function GoogleReviews() {
       </div>
 
       {reviews.length > 0 && (
-        <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {reviews.map((r) => (
-            <li
-              key={r.authorName}
-              className="border-border bg-card flex flex-col rounded-lg border p-5 transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-lg"
-            >
-              <Stars rating={r.rating} />
-              <p className="text-foreground/85 mt-3 flex-1 text-sm leading-relaxed">{r.text}</p>
-              <div className="border-border mt-5 flex items-center gap-3 border-t pt-4">
-                <span className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
-                  {r.authorName.charAt(0).toUpperCase()}
-                </span>
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{r.authorName}</div>
-                  <div className="text-muted-foreground font-mono text-[10px]">
-                    google{r.relativeTime ? ` · ${r.relativeTime}` : ""}
-                  </div>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <div className="site-marquee mt-8 -mx-4 overflow-hidden px-4 py-2 sm:mx-0 sm:px-0" aria-label="Google reviews">
+          <div className="site-marquee-track flex w-max">
+            {[0, 1].map((copy) => (
+              <ul key={copy} aria-hidden={copy === 1 || undefined} className={cn("flex gap-4 pr-4", copy === 1 && "site-marquee-copy")}>
+                {reviews.map((r) => (
+                  <ReviewCard key={r.authorName} review={r} />
+                ))}
+              </ul>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   )

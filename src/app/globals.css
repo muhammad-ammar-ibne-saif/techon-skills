@@ -489,6 +489,27 @@ body {
   to   { opacity: 1; transform: none; }
 }
 
+@keyframes site-marquee {
+  to { transform: translateX(-50%); }
+}
+
+/* Auto-moving row (home reviews): fades at the edges, pauses on hover/focus. */
+.site-marquee {
+  mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+}
+.site-marquee-track {
+  animation: site-marquee 55s linear infinite;
+}
+.site-marquee:hover .site-marquee-track,
+.site-marquee:focus-within .site-marquee-track {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-marquee { overflow-x: auto; mask-image: none; }
+  .site-marquee-track { animation: none; }
+  .site-marquee-copy { display: none; }
+}
+
 @keyframes site-reveal {
   from { opacity: 0; transform: translateY(28px); }
   to   { opacity: 1; transform: none; }
