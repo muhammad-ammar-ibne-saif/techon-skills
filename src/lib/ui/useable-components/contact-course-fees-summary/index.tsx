@@ -5,95 +5,134 @@ import { useMemo } from "react"
 import { useCourses } from "@/lib/providers/courses"
 import type { IContactFormCourse } from "@/utils/interfaces"
 import { cn } from "@/lib/helpers"
-import { firstPaymentFor, type EnrollmentPaymentPlan } from "@/lib/helpers/contact-form"
+import { courseFeeBreakdown, type EnrollmentPaymentPlan } from "@/lib/helpers/contact-form"
+
+type PlanTotals = { payNow: number; later: number; discount: number; courseFee: number }
+
+/**
+ * Fees of the selected courses under both payment plans. Totals are null when a course has no fee
+ * yet or the courses use different currencies.
+ */
+export function useEnrollmentFees(selectedCourses: IContactFormCourse[]) {
+  const { getCourseBySlug } = useCourses()
+  return useMemo(() => {
+    const rows = selectedCourses.map((c) => {
+      const full = getCourseBySlug(c.slug)
+      const fee = typeof full?.totalFee === "number" && full.totalFee > 0 ? full.totalFee : undefined
+      const months = full?.courseDurationInMonths
+      return {
+        slug: c.slug,
+        title: c.title,
+        currency: (full?.currency ?? "PKR").trim() || "PKR",
+        fee,
+        FULL: fee === undefined ? undefined : courseFeeBreakdown(fee, months, "FULL"),
+        TWO_INSTALLMENTS: fee === undefined ? undefined : courseFeeBreakdown(fee, months, "TWO_INSTALLMENTS"),
+      }
+    })
+    const mixedCurrency = new Set(rows.map((r) => r.currency)).size > 1
+    const complete = rows.length > 0 && !mixedCurrency && rows.every((r) => r.fee !== undefined)
+    const sum = (plan: EnrollmentPaymentPlan): PlanTotals | null =>
+      complete
+        ? rows.reduce(
+            (t, r) => ({
+              payNow: t.payNow + r[plan]!.payNow,
+              later: t.later + r[plan]!.later,
+              discount: t.discount + r[plan]!.discount,
+              courseFee: t.courseFee + r.fee!,
+            }),
+            { payNow: 0, later: 0, discount: 0, courseFee: 0 }
+          )
+        : null
+    return {
+      rows,
+      currency: rows[0]?.currency ?? "PKR",
+      mixedCurrency,
+      totals: { FULL: sum("FULL"), TWO_INSTALLMENTS: sum("TWO_INSTALLMENTS") },
+    }
+  }, [selectedCourses, getCourseBySlug])
+}
+
+export const formatFee = (currency: string, amount: number) => `${currency} ${amount.toLocaleString()}`
 
 type ContactCourseFeesSummaryProps = {
   selectedCourses: IContactFormCourse[]
   paymentPlan: EnrollmentPaymentPlan
-  /** MORE_INSTALLMENTS only. */
-  requestedInstallments: number
   className?: string
 }
 
 /**
- * Shows what is paid now for each selected course under the chosen payment plan, and the total.
+ * Shows each selected course's fee under the chosen payment plan and what to pay now.
  * Placed below course multi-select; student uploads one screenshot for the combined payment.
  */
-export function ContactCourseFeesSummary({
-  selectedCourses,
-  paymentPlan,
-  requestedInstallments,
-  className,
-}: ContactCourseFeesSummaryProps) {
-  const { getCourseBySlug } = useCourses()
-
-  const { rows, total, currency, canSum, mixedCurrency } = useMemo(() => {
-    const resolved = selectedCourses.map((c) => {
-      const full = getCourseBySlug(c.slug)
-      const fee =
-        typeof full?.totalFee === "number"
-          ? firstPaymentFor(full.totalFee, paymentPlan, requestedInstallments)
-          : undefined
-      const cur = (full?.currency ?? "PKR").trim() || "PKR"
-      return { slug: c.slug, title: c.title, fee, currency: cur }
-    })
-    const currencySet = new Set(resolved.map((r) => r.currency))
-    const mixed = currencySet.size > 1
-    const sum = !mixed
-      ? resolved.reduce((s, r) => s + (typeof r.fee === "number" && !Number.isNaN(r.fee) ? r.fee : 0), 0)
-      : null
-    const primaryCurrency = resolved[0]?.currency ?? "PKR"
-    return {
-      rows: resolved,
-      total: sum,
-      currency: primaryCurrency,
-      canSum: !mixed && sum !== null,
-      mixedCurrency: mixed,
-    }
-  }, [selectedCourses, getCourseBySlug, paymentPlan, requestedInstallments])
-
+export function ContactCourseFeesSummary({ selectedCourses, paymentPlan, className }: ContactCourseFeesSummaryProps) {
+  const { rows, currency, mixedCurrency, totals } = useEnrollmentFees(selectedCourses)
   if (selectedCourses.length === 0) return null
+  const total = totals[paymentPlan]
+  const isFull = paymentPlan === "FULL"
 
   return (
-    <div
-      className={cn(
-        "border-border bg-muted-surface/40 rounded-2xl border px-4 py-3 text-sm",
-        className
-      )}
-    >
-      <div className="text-foreground mb-2 font-semibold">
-        {paymentPlan === "FULL" ? "Full fee (per course)" : "First installment (per course)"}
-      </div>
+    <div className={cn("border-border bg-muted-surface/40 rounded-2xl border px-4 py-3 text-sm", className)}>
+      <div className="text-foreground mb-2 font-semibold">Course fee</div>
       <ul className="text-muted-foreground space-y-1.5">
-        {rows.map((r) => (
-          <li key={r.slug} className="flex items-start justify-between gap-3">
-            <span className="min-w-0 flex-1 leading-snug">{r.title}</span>
-            <span className="text-foreground shrink-0 font-medium tabular-nums">
-              {typeof r.fee === "number"
-                ? `${r.currency} ${r.fee.toLocaleString()}`
-                : "—"}
-            </span>
-          </li>
-        ))}
+        {rows.map((r) => {
+          const b = r[paymentPlan]
+          return (
+            <li key={r.slug} className="flex items-start justify-between gap-3">
+              <span className="min-w-0 flex-1 leading-snug">{r.title}</span>
+              <span className="shrink-0 text-right tabular-nums">
+                {r.fee === undefined || !b ? (
+                  "—"
+                ) : isFull && b.discount > 0 ? (
+                  <>
+                    <span className="mr-1.5 line-through">{formatFee(r.currency, r.fee)}</span>
+                    <span className="text-foreground font-medium">{formatFee(r.currency, b.payNow)}</span>
+                  </>
+                ) : (
+                  <span className="text-foreground font-medium">{formatFee(r.currency, r.fee)}</span>
+                )}
+              </span>
+            </li>
+          )
+        })}
       </ul>
-      <div className="border-border mt-3 flex items-center justify-between gap-3 border-t pt-3">
-        <span className="text-foreground font-semibold">Pay now</span>
-        <span className="text-foreground text-base font-semibold tabular-nums">
-          {canSum && total !== null ? `${currency} ${total.toLocaleString()}` : "—"}
-        </span>
-      </div>
+
+      {total && (
+        <dl className="border-border mt-3 space-y-1 border-t pt-3">
+          {isFull && total.discount > 0 && (
+            <>
+              <div className="text-muted-foreground flex justify-between gap-3">
+                <dt>Course fee</dt>
+                <dd className="tabular-nums">{formatFee(currency, total.courseFee)}</dd>
+              </div>
+              <div className="flex justify-between gap-3 font-medium text-emerald-600 dark:text-emerald-400">
+                <dt>Full-payment discount</dt>
+                <dd className="tabular-nums">−{formatFee(currency, total.discount)}</dd>
+              </div>
+            </>
+          )}
+          {!isFull && (
+            <div className="text-muted-foreground flex justify-between gap-3">
+              <dt>2nd installment, one month later</dt>
+              <dd className="tabular-nums">{formatFee(currency, total.later)}</dd>
+            </div>
+          )}
+          <div className="text-foreground flex items-center justify-between gap-3 pt-1 font-semibold">
+            <dt>Pay now</dt>
+            <dd className="text-base tabular-nums">{formatFee(currency, total.payNow)}</dd>
+          </div>
+        </dl>
+      )}
+
       {mixedCurrency && (
         <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
           These courses use different currencies; pay the total your bank shows and upload that receipt.
         </p>
       )}
       <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-        {paymentPlan === "FULL"
-          ? "You pay the whole fee now."
-          : paymentPlan === "MORE_INSTALLMENTS"
-            ? `You're asking for ${requestedInstallments} monthly installments. We'll confirm the schedule when we approve your application.`
-            : "The second installment is due one month later."}{" "}
-        Pay this total, then upload one screenshot of the transfer below.
+        {isFull
+          ? "Paying the whole fee at once saves you one month's fee."
+          : "You pay the full course fee in two equal parts."}{" "}
+        Pay {total ? "this amount" : "the amount above"}, then upload one screenshot of the transfer below.
       </p>
     </div>
   )

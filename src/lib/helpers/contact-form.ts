@@ -14,24 +14,36 @@ export interface ContactFormValues {
   message: string
 }
 
-export type EnrollmentPaymentPlan = "FULL" | "TWO_INSTALLMENTS" | "MORE_INSTALLMENTS"
-export const MIN_REQUESTED_INSTALLMENTS = 3
-export const MAX_REQUESTED_INSTALLMENTS = 4
+export type EnrollmentPaymentPlan = "FULL" | "TWO_INSTALLMENTS"
 
 /** Enrollment: contact fields + payment plan + fee screenshot for registration. */
 export interface EnrollmentFormValues extends ContactFormValues {
   paymentPlan: EnrollmentPaymentPlan
-  /** MORE_INSTALLMENTS only. */
-  requestedInstallments: number
   feeScreenshot: File | null
 }
 
-/** What the applicant pays now for one course under the chosen plan (matches the API's schedule). */
-export function firstPaymentFor(totalFee: number, plan: EnrollmentPaymentPlan, installments: number): number {
-  if (plan === "FULL") return totalFee
-  if (plan === "MORE_INSTALLMENTS" && installments > 0)
-    return totalFee - Math.floor(totalFee / installments) * (installments - 1)
-  return Math.ceil(totalFee / 2)
+/**
+ * Fee when the whole course is paid in one go: one month's fee off (e.g. 30,000 over 6 months → 25,000).
+ * Courses shorter than two months get no discount. Must match the API's fullPaymentFee.
+ */
+export function fullPaymentFee(totalFee: number, durationInMonths: number | null | undefined): number {
+  const months = Number(durationInMonths ?? 0)
+  if (!Number.isFinite(totalFee) || totalFee <= 0 || !Number.isFinite(months) || months < 2) return totalFee
+  return totalFee - Math.round(totalFee / months)
+}
+
+/** What the applicant pays for one course now and one month later under a plan (matches the API's schedule). */
+export function courseFeeBreakdown(
+  totalFee: number,
+  durationInMonths: number | null | undefined,
+  plan: EnrollmentPaymentPlan
+): { payNow: number; later: number; discount: number } {
+  if (plan === "FULL") {
+    const payNow = fullPaymentFee(totalFee, durationInMonths)
+    return { payNow, later: 0, discount: totalFee - payNow }
+  }
+  const payNow = Math.ceil(totalFee / 2)
+  return { payNow, later: totalFee - payNow, discount: 0 }
 }
 
 const phoneSchema = Yup.object({
@@ -68,9 +80,8 @@ export const contactFormValidationSchema = Yup.object({
 
 export const enrollmentFormValidationSchema = contactFormValidationSchema.shape({
   paymentPlan: Yup.string()
-    .oneOf(["FULL", "TWO_INSTALLMENTS", "MORE_INSTALLMENTS"])
+    .oneOf(["FULL", "TWO_INSTALLMENTS"])
     .required("Choose how you'll pay."),
-  requestedInstallments: Yup.number().integer().min(MIN_REQUESTED_INSTALLMENTS).max(MAX_REQUESTED_INSTALLMENTS).required(),
   feeScreenshot: Yup.mixed()
     .required("Please attach a screenshot of your fee payment.")
     .test("fee-image", "Please attach an image file (PNG or JPG).", (v) => v instanceof File && v.type.startsWith("image/"))
@@ -96,7 +107,6 @@ export function getEnrollmentFormInitialValues(
   return {
     ...getContactFormInitialValues(initialCourse),
     paymentPlan: "TWO_INSTALLMENTS",
-    requestedInstallments: MIN_REQUESTED_INSTALLMENTS,
     feeScreenshot: null,
   }
 }

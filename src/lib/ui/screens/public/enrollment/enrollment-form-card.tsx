@@ -9,8 +9,6 @@ import { cn, getApiDisplayMessage, logger } from "@/lib/helpers"
 import {
   enrollmentFormValidationSchema,
   getEnrollmentFormInitialValues,
-  MAX_REQUESTED_INSTALLMENTS,
-  MIN_REQUESTED_INSTALLMENTS,
   readFeeScreenshotAsDataUrl,
   type EnrollmentFormValues,
 } from "@/lib/helpers/contact-form"
@@ -18,7 +16,11 @@ import { apiService } from "@/lib/services/api"
 import { getConfig } from "@/lib/services/config"
 import { Button } from "@/lib/ui/useable-components/button"
 import { CourseMultiSelect } from "@/lib/ui/useable-components/course-multi-select"
-import { ContactCourseFeesSummary } from "@/lib/ui/useable-components/contact-course-fees-summary"
+import {
+  ContactCourseFeesSummary,
+  formatFee,
+  useEnrollmentFees,
+} from "@/lib/ui/useable-components/contact-course-fees-summary"
 import { Input } from "@/lib/ui/useable-components/input"
 import { PhoneInput, getFullPhone, type PhoneValue } from "@/lib/ui/useable-components/phone-input"
 import { Separator } from "@/lib/ui/useable-components/separator"
@@ -29,10 +31,68 @@ import type { IContactFormCourse, IEnrollmentApplicationSubmit } from "@/utils/i
 import { LoggerLevel } from "@/utils/enums"
 
 const PAYMENT_PLAN_OPTIONS = [
-  { value: "FULL", label: "Full payment", hint: "Pay the whole fee now" },
+  { value: "FULL", label: "Full payment", hint: "One month's fee off" },
   { value: "TWO_INSTALLMENTS", label: "2 installments", hint: "Half now, half next month" },
-  { value: "MORE_INSTALLMENTS", label: "3 or 4 installments", hint: "On request, needs approval" },
 ] as const
+
+/** The two payment-plan cards, with each plan's amounts once courses are picked. */
+function PaymentPlanOptions({
+  courses,
+  value,
+  onChange,
+}: {
+  courses: IContactFormCourse[]
+  value: string
+  onChange: (plan: (typeof PAYMENT_PLAN_OPTIONS)[number]["value"]) => void
+}) {
+  const { currency, totals } = useEnrollmentFees(courses)
+  const amounts = (plan: (typeof PAYMENT_PLAN_OPTIONS)[number]["value"]) => {
+    const t = totals[plan]
+    if (!t) return null
+    if (plan === "FULL")
+      return t.discount > 0 ? (
+        <>
+          <span className="text-foreground font-semibold">{formatFee(currency, t.payNow)}</span>{" "}
+          <span className="line-through">{formatFee(currency, t.courseFee)}</span>{" "}
+          <span className="font-medium text-emerald-600 dark:text-emerald-400">Save {formatFee(currency, t.discount)}</span>
+        </>
+      ) : (
+        <span className="text-foreground font-semibold">{formatFee(currency, t.payNow)}</span>
+      )
+    return (
+      <>
+        <span className="text-foreground font-semibold">{formatFee(currency, t.payNow)}</span> now +{" "}
+        {formatFee(currency, t.later)} next month
+      </>
+    )
+  }
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {PAYMENT_PLAN_OPTIONS.map((o) => (
+        <label
+          key={o.value}
+          className={cn(
+            "flex cursor-pointer flex-col gap-0.5 rounded-xl border px-3 py-2.5 text-sm transition-colors",
+            value === o.value ? "border-(--brand-primary) bg-(--brand-primary)/10" : "border-border hover:bg-muted/40"
+          )}
+        >
+          <span className="flex items-center gap-2 font-medium">
+            <input
+              type="radio"
+              name="paymentPlan"
+              value={o.value}
+              checked={value === o.value}
+              onChange={() => onChange(o.value)}
+              className="accent-(--brand-primary)"
+            />
+            {o.label}
+          </span>
+          <span className="text-muted-foreground text-xs">{amounts(o.value) ?? o.hint}</span>
+        </label>
+      ))}
+    </div>
+  )
+}
 
 type EnrollmentFormCardProps = {
   initialCourse?: { slug: string; title: string } | null
@@ -89,7 +149,6 @@ export function EnrollmentFormCard({
       message: values.message,
       phone: getFullPhone(values.phone),
       paymentPlan: values.paymentPlan,
-      ...(values.paymentPlan === "MORE_INSTALLMENTS" ? { requestedInstallments: values.requestedInstallments } : {}),
       feePaymentScreenshotDataUrl: feePaymentScreenshotDataUrl ?? "",
     }
     const toastId = toast.loading("Submitting enrollment…")
@@ -254,63 +313,14 @@ export function EnrollmentFormCard({
           </div>
           <fieldset className="w-full">
             <legend className="text-muted-foreground mb-1.5 text-xs font-medium">How will you pay? *</legend>
-            <div className="grid gap-2 sm:grid-cols-3">
-              {PAYMENT_PLAN_OPTIONS.map((o) => (
-                <label
-                  key={o.value}
-                  className={cn(
-                    "flex cursor-pointer flex-col gap-0.5 rounded-xl border px-3 py-2.5 text-sm transition-colors",
-                    values.paymentPlan === o.value
-                      ? "border-(--brand-primary) bg-(--brand-primary)/10"
-                      : "border-border hover:bg-muted/40"
-                  )}
-                >
-                  <span className="flex items-center gap-2 font-medium">
-                    <input
-                      type="radio"
-                      name="paymentPlan"
-                      value={o.value}
-                      checked={values.paymentPlan === o.value}
-                      onChange={() => setFieldValue("paymentPlan", o.value)}
-                      className="accent-(--brand-primary)"
-                    />
-                    {o.label}
-                  </span>
-                  <span className="text-muted-foreground text-xs">{o.hint}</span>
-                </label>
-              ))}
-            </div>
-            {values.paymentPlan === "MORE_INSTALLMENTS" && (
-              <div className="animate-in fade-in slide-in-from-top-1 mt-2 flex flex-wrap items-center gap-2 text-sm duration-200">
-                <span className="text-muted-foreground">Monthly installments:</span>
-                {Array.from(
-                  { length: MAX_REQUESTED_INSTALLMENTS - MIN_REQUESTED_INSTALLMENTS + 1 },
-                  (_, i) => MIN_REQUESTED_INSTALLMENTS + i
-                ).map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    aria-pressed={values.requestedInstallments === n}
-                    onClick={() => setFieldValue("requestedInstallments", n)}
-                    className={cn(
-                      "rounded-lg border px-3 py-1 font-medium transition-colors",
-                      values.requestedInstallments === n
-                        ? "border-(--brand-primary) bg-(--brand-primary)/10"
-                        : "border-border hover:bg-muted/40"
-                    )}
-                  >
-                    {n}
-                  </button>
-                ))}
-                <span className="text-muted-foreground w-full text-xs">
-                  This is a request. We&apos;ll confirm the plan when we review your enrollment.
-                </span>
-              </div>
-            )}
+            <PaymentPlanOptions
+              courses={values.courses}
+              value={values.paymentPlan}
+              onChange={(plan) => setFieldValue("paymentPlan", plan)}
+            />
             <ContactCourseFeesSummary
               selectedCourses={values.courses}
               paymentPlan={values.paymentPlan}
-              requestedInstallments={values.requestedInstallments}
               className="mt-3"
             />
           </fieldset>
