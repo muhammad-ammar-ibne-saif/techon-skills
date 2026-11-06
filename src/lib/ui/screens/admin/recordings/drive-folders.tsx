@@ -231,7 +231,7 @@ export function DriveFolders({
             <DialogPrimitive.Description className="text-muted-foreground mt-1 text-sm">
               {form?.id
                 ? "Its recordings, including ones added later, follow this choice."
-                : "Share the folder with the portal's address (shown below the page title) as Viewer first."}
+                : "Share the folder with the portal's address (shown below the page title) as Editor first."}
             </DialogPrimitive.Description>
             {form && (
               <div className="mt-4 space-y-4">
