@@ -26,3 +26,5 @@ export * from "./questions";
 export * from "./push";
 export * from "./offers";
 export * from "./promotions";
+export * from "./jobs";
+export * from "./portfolio";

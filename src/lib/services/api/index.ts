@@ -250,6 +250,16 @@ class ApiService {
         return handleApiResponse<Record<string, IOpenBatch[]>>(response);
     }
 
+    /** Public: a company asks to join the job board. */
+    registerCompany = async (body: Record<string, string>): Promise<ApiResponse<null>> => {
+        const response = await fetchURL({
+            path: CONFIG.BACKEND_PATHS.HIRING.REGISTER,
+            isGraphQL: false,
+            options: { method: FetchMethod.POST, body: JSON.stringify(body), headers: { "Content-Type": "application/json" } },
+        });
+        return handleApiResponse<null>(response);
+    }
+
     joinBatchWaitlist = async (body: { batchId: string; name: string; email: string; phone?: string }): Promise<ApiResponse<null>> => {
         const response = await fetchURL({
             path: CONFIG.BACKEND_PATHS.ENROLLMENT_APPLICATION.WAITLIST,
