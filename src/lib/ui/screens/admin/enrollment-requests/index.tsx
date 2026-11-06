@@ -278,15 +278,19 @@ function PublicEnrollmentApplicationsPanel() {
                             {formatDateTime(app.createdAt)}
                           </td>
                           <td className="p-4 align-top">
-                            <a
-                              href={proofUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-(--brand-primary) dark:text-(--text-primary-dark) inline-flex items-center gap-1 text-xs font-medium underline-offset-4 hover:underline"
-                            >
-                              <ExternalLinkIcon className="size-3.5" />
-                              View
-                            </a>
+                            {proofUrl ? (
+                              <a
+                                href={proofUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-(--brand-primary) dark:text-(--text-primary-dark) inline-flex items-center gap-1 text-xs font-medium underline-offset-4 hover:underline"
+                              >
+                                <ExternalLinkIcon className="size-3.5" />
+                                View
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">Free: no payment</span>
+                            )}
                           </td>
                           <td className="p-4 align-top">
                             <span

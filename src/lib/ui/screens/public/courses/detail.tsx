@@ -173,8 +173,21 @@ export const PublicCourseDetailScreen = ({ slug }: { slug: string }) => {
                 <dd className="mt-1 text-lg font-semibold">{formatCourseDuration(course)}</dd>
               </div>
               <div className="border-border border-l px-5 py-4">
-                <dt className="text-muted-foreground font-mono text-[10px]">full fee</dt>
-                <dd className="mt-1 text-lg font-semibold">{formatCoursePrice(course)}</dd>
+                <dt className="text-muted-foreground font-mono text-[10px]">{course.isFree ? "fee" : "full fee"}</dt>
+                <dd className="mt-1 text-lg font-semibold">
+                  {course.isFree ? (
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      {formatCoursePrice(course)}
+                      {course.totalFee > 0 && (
+                        <span className="text-muted-foreground ml-2 text-sm font-normal line-through">
+                          {course.currency} {course.totalFee.toLocaleString()}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    formatCoursePrice(course)
+                  )}
+                </dd>
               </div>
             </dl>
             <UpcomingBatches slug={course.slug} title={course.title} enrollHref={enrollHref} />

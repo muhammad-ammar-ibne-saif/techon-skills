@@ -21,3 +21,4 @@ export * from "./finance";
 export * from "./questions";
 export * from "./push";
 export * from "./offers";
+export * from "./promotions";

@@ -6,8 +6,8 @@ import { ArrowRightIcon, CheckIcon, SearchIcon } from "lucide-react"
 
 import { useCourses } from "@/lib/providers/courses"
 import { useUser } from "@/lib/providers/user"
-import { cn, formatCourseDuration, formatCoursePrice } from "@/lib/helpers"
-import { PageIntro, siteButton, siteContainer } from "@/lib/ui/useable-components/site-chrome/ui"
+import { cn, courseFreeTag, formatCourseDuration, formatCoursePrice } from "@/lib/helpers"
+import { FreeTag, PageIntro, siteButton, siteContainer } from "@/lib/ui/useable-components/site-chrome/ui"
 import { CONFIG } from "@/utils/constants/config"
 
 export const PublicCoursesScreen = () => {
@@ -33,6 +33,7 @@ export const PublicCoursesScreen = () => {
         subtitle: course.subtitle,
         tools: course.technologiesSection.technologies.map((t) => t.label),
         price: formatCoursePrice(course),
+        freeTag: courseFreeTag(course),
         duration: formatCourseDuration(course),
       })),
     [courses]
@@ -93,6 +94,7 @@ export const PublicCoursesScreen = () => {
                       >
                         {c.title}
                       </Link>
+                      {c.freeTag && <FreeTag className="ml-2 align-middle">{c.freeTag}</FreeTag>}
                       <p className="text-muted-foreground mt-1 max-w-2xl text-sm leading-relaxed">{c.subtitle}</p>
                       <div className="text-muted-foreground mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px]">
                         <span>{c.duration}</span>

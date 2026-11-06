@@ -60,3 +60,17 @@ export function PageIntro({
     </section>
   )
 }
+
+/** Small green pill for free courses. */
+export function FreeTag({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 font-mono text-[10px] font-medium tracking-normal text-emerald-700 dark:text-emerald-400",
+        className
+      )}
+    >
+      {children}
+    </span>
+  )
+}

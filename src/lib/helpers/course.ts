@@ -7,8 +7,15 @@ export function formatCourseDuration(course: ICourse): string {
   return `${n} Months`
 }
 
-/** Format course price for display (e.g. "PKR 30,000 (full or 2 installments)"). */
+/** The tag of a free course ("Free", "Complimentary"...), or null for a paid course. */
+export function courseFreeTag(course: Pick<ICourse, "isFree" | "freeLabel"> | null | undefined): string | null {
+  return course?.isFree ? course.freeLabel?.trim() || "Free" : null
+}
+
+/** Format course price for display (e.g. "PKR 30,000"), or the free tag for a free course. */
 export function formatCoursePrice(course: ICourse): string {
+  const free = courseFreeTag(course)
+  if (free) return free
   const { currency, totalFee } = course
   return `${currency} ${(totalFee ?? 0).toLocaleString()}`
 }
@@ -28,6 +35,8 @@ export interface IApiCourse {
   currency: string
   technologies: Array<{ label: string; description: string; logo: string }>
   articleFeatures: Array<{ name: string; description: string; image: string }>
+  isFree?: boolean
+  freeLabel?: string
 }
 
 /** Map API course to ICourse (adds technologiesSection, empty modules). */
@@ -57,5 +66,7 @@ export function mapApiCourseToICourse(
     },
     modules: [],
     articleFeatures: api.articleFeatures ?? [],
+    isFree: api.isFree ?? false,
+    freeLabel: api.freeLabel ?? "",
   }
 }

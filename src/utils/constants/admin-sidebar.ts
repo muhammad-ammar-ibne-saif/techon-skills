@@ -1,4 +1,4 @@
-import { CalendarIcon, FileTextIcon, LogsIcon, NewspaperIcon, SettingsIcon, TicketIcon, UsersIcon, LayoutDashboardIcon, UserPlusIcon, InboxIcon, ImageIcon, BookOpenIcon, BanknoteIcon, ClipboardCheckIcon, NotebookPenIcon, VideoIcon, ClipboardListIcon, TrendingUpIcon, ScrollTextIcon, FolderOpenIcon, UserCheckIcon, PlaySquareIcon, WalletIcon, ArchiveIcon, UsersRoundIcon, MessageCircleQuestionIcon, TicketPercentIcon } from "lucide-react"
+import { CalendarIcon, FileTextIcon, LogsIcon, NewspaperIcon, SettingsIcon, TicketIcon, UsersIcon, LayoutDashboardIcon, UserPlusIcon, InboxIcon, ImageIcon, BookOpenIcon, BanknoteIcon, ClipboardCheckIcon, NotebookPenIcon, VideoIcon, ClipboardListIcon, TrendingUpIcon, ScrollTextIcon, FolderOpenIcon, UserCheckIcon, PlaySquareIcon, WalletIcon, ArchiveIcon, UsersRoundIcon, MessageCircleQuestionIcon, TicketPercentIcon, MegaphoneIcon } from "lucide-react"
 import { CONFIG } from "./config"
 import { UserRole } from "@/utils/enums/user"
 
@@ -22,6 +22,7 @@ export const ADMIN_SIDEBAR_ITEMS = [
     { label: "Courses", href: CONFIG.ROUTES.ADMIN.COURSES, icon: TicketIcon, disabled: false, roles: ADMIN_ONLY },
     { label: "Payments", href: CONFIG.ROUTES.ADMIN.PAYMENTS, icon: BanknoteIcon, disabled: false, roles: ADMIN_ONLY },
     { label: "Coupons & referrals", href: CONFIG.ROUTES.ADMIN.OFFERS, icon: TicketPercentIcon, disabled: false, roles: ADMIN_ONLY },
+    { label: "Popup & deals", href: CONFIG.ROUTES.ADMIN.PROMOTIONS, icon: MegaphoneIcon, disabled: false, roles: ADMIN_ONLY },
     { label: "Finance", href: CONFIG.ROUTES.ADMIN.FINANCE, icon: WalletIcon, disabled: false, roles: ADMIN_ONLY },
     { label: "Grade Submissions", href: CONFIG.ROUTES.ADMIN.SUBMISSIONS, icon: ClipboardCheckIcon, disabled: false, roles: INSTRUCTOR_STAFF },
     { label: "Course assignments", href: CONFIG.ROUTES.ADMIN.ASSIGNMENTS, icon: NotebookPenIcon, disabled: false, roles: INSTRUCTOR_STAFF },

@@ -10,13 +10,14 @@ import { Button } from "@/lib/ui/useable-components/button"
 import { Input } from "@/lib/ui/useable-components/input"
 import type { IContactFormCourse, IEnrollmentCodeResult, IOpenBatch } from "@/utils/interfaces"
 
-/** Referral links (/enrollment?ref=CODE) are remembered for the visit, so the code survives browsing. */
+/** Referral and deal links (/enrollment?ref=CODE or ?code=CODE) are remembered for the visit, so the code survives browsing. */
 const REF_KEY = "techon.referral-code"
 
 export function readReferralFromUrl(): string {
   if (typeof window === "undefined") return ""
   try {
-    const fromUrl = new URLSearchParams(window.location.search).get("ref")?.trim().toUpperCase() ?? ""
+    const params = new URLSearchParams(window.location.search)
+    const fromUrl = (params.get("ref") ?? params.get("code"))?.trim().toUpperCase().slice(0, 40) ?? ""
     if (fromUrl) sessionStorage.setItem(REF_KEY, fromUrl)
     return fromUrl || sessionStorage.getItem(REF_KEY) || ""
   } catch {

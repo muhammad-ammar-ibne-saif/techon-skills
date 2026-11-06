@@ -93,6 +93,7 @@ export const CONFIG = {
             RECORDINGS: "/admin/recordings",
             QUESTIONS: "/admin/questions",
             OFFERS: "/admin/offers",
+            PROMOTIONS: "/admin/promotions",
             BATCHES: "/admin/batches",
             TICKETS: "/admin/tickets",
             NEWS: "/admin/news",

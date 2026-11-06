@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState } from "react"
 import { useQuery, useMutation, useLazyQuery } from "@apollo/client/react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import {
@@ -31,7 +31,17 @@ import { ImageUpload } from "@/lib/ui/useable-components/image-upload"
 import { ConfirmDialog } from "@/lib/ui/useable-components/confirm-dialog"
 import { cn } from "@/lib/helpers"
 
-type CourseRow = { id: string; title: string; slug: string; subtitle?: string; totalFee?: number; feePerMonth?: number; courseDurationInMonths?: number }
+type CourseRow = {
+  id: string
+  title: string
+  slug: string
+  subtitle?: string
+  totalFee?: number
+  feePerMonth?: number
+  courseDurationInMonths?: number
+  isFree?: boolean
+  freeLabel?: string
+}
 
 type TechnologyItem = { label: string; description: string; logo: string }
 type ArticleFeatureItem = { name: string; description: string; image: string }
@@ -67,6 +77,8 @@ const initialForm = {
   totalFee: 0,
   totalNumberOfInstallments: 6,
   currency: "PKR",
+  isFree: false,
+  freeLabel: "",
   technologies: [] as TechnologyItem[],
   articleFeatures: [] as ArticleFeatureItem[],
 }
@@ -102,6 +114,8 @@ export const AdminCoursesScreen = () => {
       courseDurationInMonths: number
       totalNumberOfInstallments: number
       currency: string
+      isFree?: boolean
+      freeLabel?: string
       technologies: TechnologyItem[]
       articleFeatures: ArticleFeatureItem[]
     } | null
@@ -116,16 +130,20 @@ export const AdminCoursesScreen = () => {
   const [techLogoFiles, setTechLogoFiles] = useState<Record<number, File>>({})
   const [articleImageFiles, setArticleImageFiles] = useState<Record<number, File>>({})
 
-  const resetForm = useCallback(() => {
+  // The course whose details are in the form; cleared on reset so reopening it loads it again.
+  const [loadedCourse, setLoadedCourse] = useState<unknown>(null)
+
+  const resetForm = () => {
     setForm(initialForm)
     setStep(1)
     setTechLogoFiles({})
     setArticleImageFiles({})
-  }, [])
+    setLoadedCourse(null)
+  }
 
-  useEffect(() => {
-    const c = editCourseData?.getCourse
-    if (!c || !editingId) return
+  const c = editCourseData?.getCourse
+  if (c && editingId && c !== loadedCourse) {
+    setLoadedCourse(c)
     setForm({
       title: c.title,
       slug: c.slug,
@@ -137,11 +155,13 @@ export const AdminCoursesScreen = () => {
       totalFee: c.totalFee,
       totalNumberOfInstallments: c.totalNumberOfInstallments,
       currency: c.currency,
+      isFree: c.isFree ?? false,
+      freeLabel: c.isFree ? c.freeLabel ?? "" : "",
       technologies: c.technologies?.length ? c.technologies.map((t) => ({ ...t })) : [{ ...defaultTech }],
       articleFeatures: c.articleFeatures?.length ? c.articleFeatures.map((a) => ({ ...a })) : [{ ...defaultArticle }],
     })
     setStep(1)
-  }, [editCourseData, editingId])
+  }
 
   const openEdit = (id: string) => {
     setEditingId(id)
@@ -234,6 +254,8 @@ export const AdminCoursesScreen = () => {
       totalFee: form.totalFee,
       totalNumberOfInstallments: form.totalNumberOfInstallments,
       currency: form.currency.trim() || "PKR",
+      isFree: form.isFree,
+      freeLabel: form.isFree ? form.freeLabel.trim() : "",
       technologies: techPayload,
       articleFeatures: articlePayload,
     }
@@ -305,7 +327,15 @@ export const AdminCoursesScreen = () => {
                       <td className="p-4 font-mono text-xs">{c.slug}</td>
                       <td className="p-4 text-muted-foreground">{c.courseDurationInMonths != null ? `${c.courseDurationInMonths} mo` : "—"}</td>
                       <td className="p-4">
-                        {c.totalFee != null ? `PKR ${c.totalFee.toLocaleString()}` : "—"}
+                        {c.isFree ? (
+                          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                            {c.freeLabel || "Free"}
+                          </span>
+                        ) : c.totalFee != null ? (
+                          `PKR ${c.totalFee.toLocaleString()}`
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       <td className="p-4 flex items-center gap-1">
                         <Button variant="ghost" size="icon" onClick={() => openEdit(c.id)} title="Edit course">
@@ -420,6 +450,30 @@ export const AdminCoursesScreen = () => {
                   <p className="text-muted-foreground text-xs">
                     Students pay this in full or in 2 installments. Discounts and custom installments are set per student under Payments → Student fees.
                   </p>
+                  <div className="rounded-xl border p-3 space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      <input
+                        type="checkbox"
+                        checked={form.isFree}
+                        onChange={(e) => setForm((f) => ({ ...f, isFree: e.target.checked }))}
+                      />
+                      Free course (complimentary)
+                    </label>
+                    {form.isFree && (
+                      <>
+                        <Input
+                          value={form.freeLabel}
+                          maxLength={30}
+                          onChange={(e) => setForm((f) => ({ ...f, freeLabel: e.target.value }))}
+                          placeholder='Tag on the website, e.g. "Free" or "Complimentary"'
+                        />
+                        <p className="text-muted-foreground text-xs">
+                          Students enroll without paying and no fee installments are created. The fee above is shown crossed out as its value
+                          (leave it 0 to hide it).
+                        </p>
+                      </>
+                    )}
+                  </div>
                 </>
               )}
               {step === 3 && (
@@ -481,7 +535,12 @@ export const AdminCoursesScreen = () => {
                   <p className="font-medium">{form.title || "—"}</p>
                   <p className="text-muted-foreground">Slug: <span className="font-mono">{form.slug || "—"}</span></p>
                   <p className="text-muted-foreground">{form.subtitle || "—"}</p>
-                  <p className="text-muted-foreground">{form.currency} {form.totalFee?.toLocaleString()} total (full or 2 installments) · {form.courseDurationInMonths} months</p>
+                  <p className="text-muted-foreground">
+                    {form.isFree
+                      ? `${form.freeLabel.trim() || "Free"} (no fee)`
+                      : `${form.currency} ${form.totalFee?.toLocaleString()} total (full or 2 installments)`}{" "}
+                    · {form.courseDurationInMonths} months
+                  </p>
                   <p className="text-muted-foreground">{form.technologies.length} technologies · {form.articleFeatures.length} article features</p>
                 </div>
               )}

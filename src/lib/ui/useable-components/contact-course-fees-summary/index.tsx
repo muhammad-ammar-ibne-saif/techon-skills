@@ -4,7 +4,7 @@ import { useMemo } from "react"
 
 import { useCourses } from "@/lib/providers/courses"
 import type { IContactFormCourse } from "@/utils/interfaces"
-import { cn } from "@/lib/helpers"
+import { cn, courseFreeTag } from "@/lib/helpers"
 import { courseFeeBreakdown, type EnrollmentPaymentPlan } from "@/lib/helpers/contact-form"
 
 type PlanTotals = { payNow: number; later: number; discount: number; courseFee: number; codeDiscount: number }
@@ -21,13 +21,16 @@ export function useEnrollmentFees(selectedCourses: IContactFormCourse[], codeDis
   return useMemo(() => {
     const rows = selectedCourses.map((c) => {
       const full = getCourseBySlug(c.slug)
-      const fee = typeof full?.totalFee === "number" && full.totalFee > 0 ? full.totalFee : undefined
+      const freeTag = courseFreeTag(full)
+      const fee = freeTag ? 0 : typeof full?.totalFee === "number" && full.totalFee > 0 ? full.totalFee : undefined
       const months = full?.courseDurationInMonths
       // A code comes off the course fee first; the plan (and its full-payment month off) works on the rest.
       const off = fee === undefined ? 0 : Math.min(fee, codeDiscounts.find((d) => d.slug === c.slug)?.amount ?? 0)
       const net = fee === undefined ? undefined : fee - off
       return {
         off,
+        freeTag,
+        listFee: full?.totalFee ?? 0,
         slug: c.slug,
         title: c.title,
         currency: (full?.currency ?? "PKR").trim() || "PKR",
@@ -90,7 +93,12 @@ export function ContactCourseFeesSummary({ selectedCourses, paymentPlan, classNa
             <li key={r.slug} className="flex items-start justify-between gap-3">
               <span className="min-w-0 flex-1 leading-snug">{r.title}</span>
               <span className="shrink-0 text-right tabular-nums">
-                {r.fee === undefined || !b ? (
+                {r.freeTag ? (
+                  <>
+                    {r.listFee > 0 && <span className="mr-1.5 line-through">{formatFee(r.currency, r.listFee)}</span>}
+                    <span className="font-medium text-emerald-600 dark:text-emerald-400">{r.freeTag}</span>
+                  </>
+                ) : r.fee === undefined || !b ? (
                   "—"
                 ) : (isFull && b.discount > 0) || r.off > 0 ? (
                   <>
@@ -144,12 +152,16 @@ export function ContactCourseFeesSummary({ selectedCourses, paymentPlan, classNa
           These courses use different currencies; pay the total your bank shows and upload that receipt.
         </p>
       )}
+      {total && total.payNow === 0 ? (
+        <p className="text-muted-foreground mt-2 text-xs leading-relaxed">Nothing to pay: no payment screenshot is needed.</p>
+      ) : (
       <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
         {isFull
           ? "Paying the whole fee at once saves you one month's fee."
           : "You pay the full course fee in two equal parts."}{" "}
         Pay {total ? "this amount" : "the amount above"}, then upload one screenshot of the transfer below.
       </p>
+      )}
     </div>
   )
 }

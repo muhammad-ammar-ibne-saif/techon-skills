@@ -24,6 +24,13 @@ export function PublicEnrollmentScreen() {
   const { getCourseBySlug } = useCourses()
   const course = courseSlug ? getCourseBySlug(courseSlug) : undefined
   const initialCourse = course != null ? { slug: course.slug, title: course.title } : null
+  const initialCourses = (searchParams.get("courses") ?? "")
+    .split(",")
+    .map((s) => getCourseBySlug(s.trim()))
+    .filter((c): c is NonNullable<typeof c> => Boolean(c))
+    .slice(0, 10)
+    .map((c) => ({ slug: c.slug, title: c.title }))
+  const picked = initialCourses.length ? initialCourses : initialCourse ? [initialCourse] : []
 
   return (
     <section className={cn("border-border/60 border-b", siteDotGrid)}>
@@ -36,10 +43,10 @@ export function PublicEnrollmentScreen() {
           <p className="text-muted-foreground mt-5 max-w-md text-[15px] leading-relaxed">
             Pick your course, pay the fee and upload your receipt. We activate your account as soon as the payment is confirmed.
           </p>
-          {initialCourse && (
+          {picked.length > 0 && (
             <p className="mt-4 text-sm">
-              Selected: <span className="font-semibold text-(--site-accent)">{initialCourse.title}</span>. You can add or
-              change courses in the form.
+              Selected: <span className="font-semibold text-(--site-accent)">{picked.map((c) => c.title).join(", ")}</span>. You
+              can add or change courses in the form.
             </p>
           )}
           <ol className="border-border mt-8 border-t">
@@ -63,7 +70,7 @@ export function PublicEnrollmentScreen() {
             enrollment form · reviewed by an admin
           </div>
           <div className="p-6 sm:p-8">
-            <EnrollmentFormCard initialCourse={initialCourse} variant="page" />
+            <EnrollmentFormCard initialCourse={initialCourse} initialCourses={initialCourses} variant="page" />
           </div>
         </div>
       </div>
