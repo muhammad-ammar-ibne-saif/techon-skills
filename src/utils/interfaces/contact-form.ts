@@ -10,6 +10,14 @@ export interface IContactForm {
     feePaymentScreenshotDataUrl?: string;
 }
 
+export type LeadStatus = "NEW" | "CALLED" | "INTERESTED" | "ENROLLED" | "LOST";
+
+export interface ILeadNote {
+    text: string;
+    byName: string;
+    at: string;
+}
+
 export interface IContactFormSubmission {
     _id: string;
     name: string;
@@ -18,5 +26,9 @@ export interface IContactFormSubmission {
     message?: string;
     courses: IContactFormCourse[];
     createdAt: string;
+    leadStatus?: LeadStatus;
+    statusChangedAt?: string | null;
+    followUpAt?: string | null;
+    notes?: ILeadNote[];
 }
 

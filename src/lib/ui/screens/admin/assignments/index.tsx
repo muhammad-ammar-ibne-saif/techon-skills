@@ -43,6 +43,7 @@ export const AdminAssignmentsScreen = () => {
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [guidelines, setGuidelines] = useState("")
+  const [markingGuide, setMarkingGuide] = useState("")
   const [attachmentUrls, setAttachmentUrls] = useState<string[]>([])
   const [maxMarks, setMaxMarks] = useState<string>("100")
   const [dueDate, setDueDate] = useState("")
@@ -78,6 +79,7 @@ export const AdminAssignmentsScreen = () => {
       setTitle("")
       setDescription("")
       setGuidelines("")
+      setMarkingGuide("")
       setAttachmentUrls([])
       setMaxMarks("100")
       setDueDate("")
@@ -157,6 +159,7 @@ export const AdminAssignmentsScreen = () => {
           title: title.trim(),
           description: description.trim() || undefined,
           guidelines: guidelines.trim() || undefined,
+          markingGuide: markingGuide.trim() || undefined,
           attachmentUrls: attachmentUrls.length ? attachmentUrls : undefined,
           maxMarks: max,
           dueDate: dueDate.trim() ? new Date(dueDate).toISOString() : undefined,
@@ -249,6 +252,18 @@ export const AdminAssignmentsScreen = () => {
                     onChange={(e) => setGuidelines(e.target.value)}
                     placeholder="Requirements, deliverables, rubric notes…"
                     className="min-h-[96px] resize-y"
+                  />
+                </div>
+                <div>
+                  <label className="text-muted-foreground mb-1 block text-xs font-medium">
+                    Marking guide (optional, staff only)
+                  </label>
+                  <Textarea
+                    value={markingGuide}
+                    onChange={(e) => setMarkingGuide(e.target.value)}
+                    placeholder="How to award marks, e.g. 4 for layout, 4 for working code, 2 for a README. Students never see this."
+                    maxLength={5000}
+                    className="min-h-[72px] resize-y"
                   />
                 </div>
                 <div>

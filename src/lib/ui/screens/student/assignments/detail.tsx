@@ -72,6 +72,7 @@ export const StudentAssignmentDetailScreen = ({ assignmentId }: { assignmentId: 
       status: string
       marks: number | null
       maxMarks: number
+      feedback: string
       passingGrade: boolean
       canStudentSubmit: boolean
       attachmentUrl: string | null
@@ -287,6 +288,12 @@ export const StudentAssignmentDetailScreen = ({ assignmentId }: { assignmentId: 
               {sub.passingGrade ? " (pass)" : " (below pass threshold)"}
             </p>
           )}
+          {graded && sub?.feedback ? (
+            <div className="rounded-xl border bg-muted-surface/30 p-3 text-sm">
+              <div className="mb-1 font-medium">Feedback from your instructor</div>
+              <p className="whitespace-pre-wrap">{sub.feedback}</p>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 

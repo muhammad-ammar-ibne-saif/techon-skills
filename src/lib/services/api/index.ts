@@ -112,10 +112,26 @@ class ApiService {
         return handleApiResponse<T>(response);
     }
 
-    getContactFormSubmissions = async (page: number, limit: number): Promise<ApiResponse<IContactFormSubmission[]>> => {
-        const path = `${CONFIG.BACKEND_PATHS.FORM.GET_CONTACT_SUBMISSIONS}?page=${page}&limit=${limit}`;
+    getContactFormSubmissions = async (page: number, limit: number, status?: string): Promise<ApiResponse<IContactFormSubmission[]>> => {
+        const path = `${CONFIG.BACKEND_PATHS.FORM.GET_CONTACT_SUBMISSIONS}?page=${page}&limit=${limit}${status ? `&status=${encodeURIComponent(status)}` : ""}`;
         const response = await fetchURL({ path, isGraphQL: false, options: { method: FetchMethod.GET } });
         return handleApiResponse<IContactFormSubmission[]>(response);
+    }
+
+    /** Enquiries per lead status, plus FOLLOW_UP (call-backs due). */
+    getLeadCounts = async (): Promise<ApiResponse<Record<string, number>>> => {
+        const response = await fetchURL({ path: CONFIG.BACKEND_PATHS.FORM.LEAD_COUNTS, isGraphQL: false, options: { method: FetchMethod.GET } });
+        return handleApiResponse<Record<string, number>>(response);
+    }
+
+    /** Sets an enquiry's status and call-back day (YYYY-MM-DD, or "" to clear), and/or adds a note. */
+    updateLead = async (body: { submissionId: string; status?: string; followUpAt?: string; note?: string }): Promise<ApiResponse<IContactFormSubmission>> => {
+        const response = await fetchURL({
+            path: CONFIG.BACKEND_PATHS.FORM.UPDATE_LEAD,
+            isGraphQL: false,
+            options: { method: FetchMethod.POST, body: JSON.stringify(body), headers: { "Content-Type": "application/json" } },
+        });
+        return handleApiResponse<IContactFormSubmission>(response);
     }
 
     getStudentRegistrationRequests = async (page: number, limit: number): Promise<ApiResponse<IUser[]>> => {

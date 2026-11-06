@@ -25,6 +25,8 @@ export const CONFIG = {
             SUBMIT: "/contact-form/submit",
             GET_CONTACT_SUBMISSIONS: "/contact-form/get-contact-form-requests",
             SEND_EMAIL: "/contact-form/send-email",
+            LEAD_COUNTS: "/contact-form/lead-counts",
+            UPDATE_LEAD: "/contact-form/lead",
             ASSIGN_COURSES: "/contact-form/assign-courses",
         },
         ENROLLMENT_APPLICATION: {
@@ -102,6 +104,8 @@ export const CONFIG = {
             OFFERS: "/admin/offers",
             PROMOTIONS: "/admin/promotions",
             JOBS: "/admin/jobs",
+            AT_RISK: "/admin/at-risk",
+            REPORTS: "/admin/reports",
             BATCHES: "/admin/batches",
             TICKETS: "/admin/tickets",
             NEWS: "/admin/news",

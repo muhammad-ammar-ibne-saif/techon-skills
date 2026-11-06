@@ -8,6 +8,7 @@ export const GET_COURSE_ASSIGNMENTS = gql`
       title
       description
       guidelines
+      markingGuide
       attachmentUrls
       maxMarks
       referenceId
@@ -28,6 +29,7 @@ export const GET_COURSE_ASSIGNMENT_BY_ID = gql`
       title
       description
       guidelines
+      markingGuide
       attachmentUrls
       maxMarks
       referenceId

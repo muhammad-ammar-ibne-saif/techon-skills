@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { useMutation, useQuery } from "@apollo/client/react"
-import { CopyIcon, ExternalLinkIcon, EyeIcon, Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react"
+import { CopyIcon, ExternalLinkIcon, EyeIcon, Loader2Icon, PlusIcon, Trash2Icon, UploadIcon } from "lucide-react"
 import toast from "react-hot-toast"
 
 import { GET_MY_JOB_APPLICATIONS, GET_MY_PORTFOLIO, UPDATE_MY_PORTFOLIO } from "@/lib/graphql"
@@ -11,6 +11,7 @@ import { Button } from "@/lib/ui/useable-components/button"
 import { ContentAreaLoader } from "@/lib/ui/useable-components/content-area-loader"
 import { Input } from "@/lib/ui/useable-components/input"
 import { Textarea } from "@/lib/ui/useable-components/textarea"
+import { apiService } from "@/lib/services"
 import { CONFIG } from "@/utils/constants"
 import { PortfolioView, type Portfolio } from "./public"
 import { CompanyLogo, EmptyState, Field, StatusPill, companyPath, jobPath, portfolioPath, timeAgo, type Application } from "./shared"
@@ -116,6 +117,27 @@ function PortfolioEditor({ initial }: { initial: Portfolio }) {
   const [saved, setSaved] = useState(initial)
   const [preview, setPreview] = useState(false)
   const [save, { loading }] = useMutation<{ updateMyPortfolio: Portfolio }>(UPDATE_MY_PORTFOLIO)
+  const cvInput = useRef<HTMLInputElement>(null)
+  const [uploadingCv, setUploadingCv] = useState(false)
+  const uploadCv = async (file: File | undefined) => {
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("The PDF must be 5MB or smaller.")
+      return
+    }
+    setUploadingCv(true)
+    try {
+      const res = await apiService.uploadImage(file, "cvs")
+      if (!res?.success || !res.data?.url) throw new Error(res?.message || "Upload failed")
+      setForm((f) => ({ ...f, cvUrl: res.data!.url }))
+      toast.success("CV uploaded. Save your portfolio to keep it.")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed.")
+    } finally {
+      setUploadingCv(false)
+      if (cvInput.current) cvInput.current.value = ""
+    }
+  }
   const set = (k: keyof Form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }))
   const setItem = <K extends "links" | "projects" | "experience" | "education">(k: K, i: number, patch: Partial<Form[K][number]>) =>
     setForm((f) => ({ ...f, [k]: f[k].map((x, j) => (j === i ? { ...x, ...patch } : x)) }))
@@ -219,10 +241,23 @@ function PortfolioEditor({ initial }: { initial: Portfolio }) {
             )}
           </Section>
 
-          <Section title="Links" hint="Your CV can be a Google Drive or Dropbox link (set to “anyone with the link”).">
+          <Section title="Links" hint="Upload your CV as a PDF, or paste a Google Drive or Dropbox link (set to “anyone with the link”).">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="CV link">
-                <Input value={form.cvUrl} onChange={set("cvUrl")} placeholder="https://drive.google.com/…" />
+                <div className="flex gap-2">
+                  <Input value={form.cvUrl} onChange={set("cvUrl")} placeholder="https://drive.google.com/…" />
+                  <input
+                    ref={cvInput}
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    className="hidden"
+                    onChange={(e) => void uploadCv(e.target.files?.[0])}
+                  />
+                  <Button type="button" variant="outline" disabled={uploadingCv} onClick={() => cvInput.current?.click()} className="shrink-0 gap-1">
+                    {uploadingCv ? <Loader2Icon className="size-4 animate-spin" /> : <UploadIcon className="size-4" />}
+                    PDF
+                  </Button>
+                </div>
               </Field>
               <Field label="GitHub">
                 <Input value={form.github} onChange={set("github")} placeholder="https://github.com/…" />
