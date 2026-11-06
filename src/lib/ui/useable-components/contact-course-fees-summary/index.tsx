@@ -7,26 +7,33 @@ import type { IContactFormCourse } from "@/utils/interfaces"
 import { cn } from "@/lib/helpers"
 import { courseFeeBreakdown, type EnrollmentPaymentPlan } from "@/lib/helpers/contact-form"
 
-type PlanTotals = { payNow: number; later: number; discount: number; courseFee: number }
+type PlanTotals = { payNow: number; later: number; discount: number; courseFee: number; codeDiscount: number }
+
+/** Amount a coupon or referral code takes off each course, by slug. */
+export type CodeDiscounts = { slug: string; amount: number }[]
 
 /**
  * Fees of the selected courses under both payment plans. Totals are null when a course has no fee
  * yet or the courses use different currencies.
  */
-export function useEnrollmentFees(selectedCourses: IContactFormCourse[]) {
+export function useEnrollmentFees(selectedCourses: IContactFormCourse[], codeDiscounts: CodeDiscounts = []) {
   const { getCourseBySlug } = useCourses()
   return useMemo(() => {
     const rows = selectedCourses.map((c) => {
       const full = getCourseBySlug(c.slug)
       const fee = typeof full?.totalFee === "number" && full.totalFee > 0 ? full.totalFee : undefined
       const months = full?.courseDurationInMonths
+      // A code comes off the course fee first; the plan (and its full-payment month off) works on the rest.
+      const off = fee === undefined ? 0 : Math.min(fee, codeDiscounts.find((d) => d.slug === c.slug)?.amount ?? 0)
+      const net = fee === undefined ? undefined : fee - off
       return {
+        off,
         slug: c.slug,
         title: c.title,
         currency: (full?.currency ?? "PKR").trim() || "PKR",
         fee,
-        FULL: fee === undefined ? undefined : courseFeeBreakdown(fee, months, "FULL"),
-        TWO_INSTALLMENTS: fee === undefined ? undefined : courseFeeBreakdown(fee, months, "TWO_INSTALLMENTS"),
+        FULL: net === undefined ? undefined : courseFeeBreakdown(net, months, "FULL"),
+        TWO_INSTALLMENTS: net === undefined ? undefined : courseFeeBreakdown(net, months, "TWO_INSTALLMENTS"),
       }
     })
     const mixedCurrency = new Set(rows.map((r) => r.currency)).size > 1
@@ -39,8 +46,9 @@ export function useEnrollmentFees(selectedCourses: IContactFormCourse[]) {
               later: t.later + r[plan]!.later,
               discount: t.discount + r[plan]!.discount,
               courseFee: t.courseFee + r.fee!,
+              codeDiscount: t.codeDiscount + r.off,
             }),
-            { payNow: 0, later: 0, discount: 0, courseFee: 0 }
+            { payNow: 0, later: 0, discount: 0, courseFee: 0, codeDiscount: 0 }
           )
         : null
     return {
@@ -49,7 +57,7 @@ export function useEnrollmentFees(selectedCourses: IContactFormCourse[]) {
       mixedCurrency,
       totals: { FULL: sum("FULL"), TWO_INSTALLMENTS: sum("TWO_INSTALLMENTS") },
     }
-  }, [selectedCourses, getCourseBySlug])
+  }, [selectedCourses, getCourseBySlug, codeDiscounts])
 }
 
 export const formatFee = (currency: string, amount: number) => `${currency} ${amount.toLocaleString()}`
@@ -58,14 +66,16 @@ type ContactCourseFeesSummaryProps = {
   selectedCourses: IContactFormCourse[]
   paymentPlan: EnrollmentPaymentPlan
   className?: string
+  /** Applied coupon or referral code. */
+  code?: { label: string; discounts: CodeDiscounts } | null
 }
 
 /**
  * Shows each selected course's fee under the chosen payment plan and what to pay now.
  * Placed below course multi-select; student uploads one screenshot for the combined payment.
  */
-export function ContactCourseFeesSummary({ selectedCourses, paymentPlan, className }: ContactCourseFeesSummaryProps) {
-  const { rows, currency, mixedCurrency, totals } = useEnrollmentFees(selectedCourses)
+export function ContactCourseFeesSummary({ selectedCourses, paymentPlan, className, code }: ContactCourseFeesSummaryProps) {
+  const { rows, currency, mixedCurrency, totals } = useEnrollmentFees(selectedCourses, code?.discounts)
   if (selectedCourses.length === 0) return null
   const total = totals[paymentPlan]
   const isFull = paymentPlan === "FULL"
@@ -82,10 +92,10 @@ export function ContactCourseFeesSummary({ selectedCourses, paymentPlan, classNa
               <span className="shrink-0 text-right tabular-nums">
                 {r.fee === undefined || !b ? (
                   "—"
-                ) : isFull && b.discount > 0 ? (
+                ) : (isFull && b.discount > 0) || r.off > 0 ? (
                   <>
                     <span className="mr-1.5 line-through">{formatFee(r.currency, r.fee)}</span>
-                    <span className="text-foreground font-medium">{formatFee(r.currency, b.payNow)}</span>
+                    <span className="text-foreground font-medium">{formatFee(r.currency, isFull ? b.payNow : r.fee - r.off)}</span>
                   </>
                 ) : (
                   <span className="text-foreground font-medium">{formatFee(r.currency, r.fee)}</span>
@@ -98,17 +108,23 @@ export function ContactCourseFeesSummary({ selectedCourses, paymentPlan, classNa
 
       {total && (
         <dl className="border-border mt-3 space-y-1 border-t pt-3">
+          {((isFull && total.discount > 0) || total.codeDiscount > 0) && (
+            <div className="text-muted-foreground flex justify-between gap-3">
+              <dt>Course fee</dt>
+              <dd className="tabular-nums">{formatFee(currency, total.courseFee)}</dd>
+            </div>
+          )}
+          {total.codeDiscount > 0 && (
+            <div className="flex justify-between gap-3 font-medium text-emerald-600 dark:text-emerald-400">
+              <dt>{code?.label ?? "Discount code"}</dt>
+              <dd className="tabular-nums">−{formatFee(currency, total.codeDiscount)}</dd>
+            </div>
+          )}
           {isFull && total.discount > 0 && (
-            <>
-              <div className="text-muted-foreground flex justify-between gap-3">
-                <dt>Course fee</dt>
-                <dd className="tabular-nums">{formatFee(currency, total.courseFee)}</dd>
-              </div>
-              <div className="flex justify-between gap-3 font-medium text-emerald-600 dark:text-emerald-400">
-                <dt>Full-payment discount</dt>
-                <dd className="tabular-nums">−{formatFee(currency, total.discount)}</dd>
-              </div>
-            </>
+            <div className="flex justify-between gap-3 font-medium text-emerald-600 dark:text-emerald-400">
+              <dt>Full-payment discount</dt>
+              <dd className="tabular-nums">−{formatFee(currency, total.discount)}</dd>
+            </div>
           )}
           {!isFull && (
             <div className="text-muted-foreground flex justify-between gap-3">

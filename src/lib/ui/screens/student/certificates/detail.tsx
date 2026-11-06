@@ -6,6 +6,7 @@ import { ArrowLeftIcon, Loader2Icon } from "lucide-react"
 
 import { Button } from "@/lib/ui/useable-components/button"
 import { CertificateView } from "@/lib/ui/useable-components/certificate-view"
+import { CertificateShareButtons } from "@/lib/ui/useable-components/certificate-share"
 import { GET_CERTIFICATE_BY_ID } from "@/lib/graphql"
 import { CONFIG } from "@/utils/constants"
 
@@ -20,6 +21,7 @@ export const StudentCertificateDetailScreen = ({ certificateId }: { certificateI
       grade: string
       message: string
       status: string
+      issuedAt?: string | null
       template?: {
         titleLine?: string
         subtitleLine?: string
@@ -61,6 +63,17 @@ export const StudentCertificateDetailScreen = ({ certificateId }: { certificateI
           All certificates
         </Link>
       </Button>
+      {cert.status === "live" && (
+        <div className="mb-6 flex flex-col gap-3 rounded-2xl border bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="font-semibold">Show it off</div>
+            <p className="text-muted-foreground text-sm">
+              Add it to your LinkedIn profile. Anyone can confirm it&apos;s genuine through the verify link.
+            </p>
+          </div>
+          <CertificateShareButtons cert={cert} />
+        </div>
+      )}
       <CertificateView
         data={{
           studentName: cert.studentName,

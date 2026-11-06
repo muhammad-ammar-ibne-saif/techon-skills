@@ -74,4 +74,9 @@ export interface ICourse {
 }
 
 /** Contact form / API: course reference for linking to Course documents (slug + title). */
-export type IContactFormCourse = Pick<ICourse, "slug" | "title">
+export type IContactFormCourse = Pick<ICourse, "slug" | "title"> & {
+  /** Enrollment form: the batch picked for this course. */
+  batchId?: string | null
+  /** Admin list: name of the picked batch. */
+  batchName?: string | null
+}

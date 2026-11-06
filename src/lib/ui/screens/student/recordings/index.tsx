@@ -1,13 +1,13 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useQuery } from "@apollo/client/react"
-import { Loader2Icon, PlayCircleIcon, VideoIcon } from "lucide-react"
+import { CheckCircle2Icon, Loader2Icon, PlayCircleIcon, VideoIcon } from "lucide-react"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/lib/ui/useable-components/card"
-import { RecordingPlayerDialog } from "@/lib/ui/useable-components/recording-player"
+import { RecordingPlayerDialog, formatClock } from "@/lib/ui/useable-components/recording-player"
 import { formatDuration } from "@/lib/ui/screens/admin/recordings"
-import { GET_MY_RECORDINGS } from "@/lib/graphql"
+import { GET_CONTINUE_WATCHING, GET_MY_RECORDINGS } from "@/lib/graphql"
 import { formatDate } from "@/lib/helpers"
 import { useUser } from "@/lib/providers/user"
 
@@ -19,6 +19,26 @@ type RecordingItem = {
   description: string
   recordedAt: string
   durationSeconds: number | null
+  myProgress?: RecordingProgress | null
+}
+
+export type RecordingProgress = { positionSeconds: number; durationSeconds: number | null; completed: boolean }
+
+/** Share watched (0–100), or null when there's nothing to show. */
+export function watchedPercent(progress: RecordingProgress | null | undefined, durationSeconds: number | null) {
+  const total = progress?.durationSeconds ?? durationSeconds
+  if (!progress || !total) return null
+  return progress.completed ? 100 : Math.min(99, Math.round((progress.positionSeconds / total) * 100))
+}
+
+/** Thin bar showing how much of a recording was watched. */
+export function WatchedBar({ percent }: { percent: number | null }) {
+  if (percent == null || percent <= 0) return null
+  return (
+    <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full" aria-label={`${percent}% watched`}>
+      <div className="h-full rounded-full bg-(--brand-primary)" style={{ width: `${percent}%` }} />
+    </div>
+  )
 }
 
 export const StudentRecordingsScreen = () => {
@@ -26,12 +46,38 @@ export const StudentRecordingsScreen = () => {
   const [courseFilter, setCourseFilter] = useState("all")
   const [playing, setPlaying] = useState<RecordingItem | null>(null)
 
-  const { data, loading, error } = useQuery<{ getMyRecordings: RecordingItem[] }>(GET_MY_RECORDINGS, {
+  const { data, loading, error, refetch } = useQuery<{ getMyRecordings: RecordingItem[] }>(GET_MY_RECORDINGS, {
     variables: { courseId: courseFilter === "all" ? null : courseFilter },
     skip: !userProfileInfo?.id,
     fetchPolicy: "network-only",
   })
   const recordings = useMemo(() => data?.getMyRecordings ?? [], [data])
+  const { data: continueData, refetch: refetchContinue } = useQuery<{
+    getContinueWatching: { recording: RecordingItem; progress: RecordingProgress }[]
+  }>(GET_CONTINUE_WATCHING, { variables: { limit: 3 }, skip: !userProfileInfo?.id, fetchPolicy: "network-only" })
+  const continueItems = continueData?.getContinueWatching ?? []
+
+  // Notification links open a recording directly: /student/recordings?play=<id>
+  const [playId, setPlayId] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("play"),
+  )
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has("play")) window.history.replaceState(null, "", window.location.pathname)
+  }, [])
+  if (playId && data) {
+    const r = data.getMyRecordings.find((x) => x.id === playId)
+    setPlayId(null)
+    if (r) setPlaying(r)
+  }
+
+  const closePlayer = () => {
+    setPlaying(null)
+    // Give the last progress save a moment to land, then show the new position.
+    window.setTimeout(() => {
+      void refetch()
+      void refetchContinue()
+    }, 600)
+  }
 
   const grouped = useMemo(() => {
     const map = new Map<string, { title: string; items: RecordingItem[] }>()
@@ -80,6 +126,31 @@ export const StudentRecordingsScreen = () => {
         </div>
       ) : (
         <div className="space-y-8">
+          {continueItems.length > 0 && courseFilter === "all" && (
+            <section>
+              <h2 className="mb-3 text-lg font-semibold">Continue watching</h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {continueItems.map(({ recording: r, progress }) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setPlaying({ ...r, myProgress: progress })}
+                    className="group flex flex-col gap-2 rounded-3xl border border-(--brand-primary)/30 bg-(--brand-primary)/5 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate font-semibold">{r.title}</div>
+                        <div className="text-muted-foreground truncate text-xs">{r.course?.title}</div>
+                      </div>
+                      <PlayCircleIcon className="text-(--brand-primary) size-7 shrink-0 transition group-hover:scale-110" />
+                    </div>
+                    <WatchedBar percent={watchedPercent(progress, r.durationSeconds)} />
+                    <div className="text-muted-foreground text-xs">Continue from {formatClock(progress.positionSeconds)}</div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
           {grouped.map((group) => (
             <section key={group.title}>
               <h2 className="mb-3 text-lg font-semibold">{group.title}</h2>
@@ -98,9 +169,15 @@ export const StudentRecordingsScreen = () => {
                         <CardTitle className="text-base leading-snug">{r.title}</CardTitle>
                         <PlayCircleIcon className="text-(--brand-primary) size-7 shrink-0 transition group-hover:scale-110" />
                       </div>
-                      <CardDescription className="text-xs">
+                      <CardDescription className="flex items-center gap-1.5 text-xs">
                         {formatDate(r.recordedAt)} · {formatDuration(r.durationSeconds)}
+                        {r.myProgress?.completed && (
+                          <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+                            · <CheckCircle2Icon className="size-3.5" /> Watched
+                          </span>
+                        )}
                       </CardDescription>
+                      {!r.myProgress?.completed && <WatchedBar percent={watchedPercent(r.myProgress, r.durationSeconds)} />}
                     </CardHeader>
                     {r.description && (
                       <CardContent className="pt-0 text-sm text-muted-foreground line-clamp-3">{r.description}</CardContent>
@@ -113,7 +190,12 @@ export const StudentRecordingsScreen = () => {
         </div>
       )}
 
-      <RecordingPlayerDialog recordingId={playing?.id ?? null} title={playing?.title ?? ""} onClose={() => setPlaying(null)} />
+      <RecordingPlayerDialog
+        recordingId={playing?.id ?? null}
+        title={playing?.title ?? ""}
+        startAt={playing?.myProgress && !playing.myProgress.completed ? playing.myProgress.positionSeconds : null}
+        onClose={closePlayer}
+      />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { CalendarIcon, FileTextIcon, LogsIcon, NewspaperIcon, SettingsIcon, TicketIcon, UsersIcon, LayoutDashboardIcon, UserPlusIcon, InboxIcon, ImageIcon, BookOpenIcon, BanknoteIcon, ClipboardCheckIcon, NotebookPenIcon, VideoIcon, ClipboardListIcon, TrendingUpIcon, ScrollTextIcon, FolderOpenIcon, UserCheckIcon, PlaySquareIcon, WalletIcon, ArchiveIcon, UsersRoundIcon } from "lucide-react"
+import { CalendarIcon, FileTextIcon, LogsIcon, NewspaperIcon, SettingsIcon, TicketIcon, UsersIcon, LayoutDashboardIcon, UserPlusIcon, InboxIcon, ImageIcon, BookOpenIcon, BanknoteIcon, ClipboardCheckIcon, NotebookPenIcon, VideoIcon, ClipboardListIcon, TrendingUpIcon, ScrollTextIcon, FolderOpenIcon, UserCheckIcon, PlaySquareIcon, WalletIcon, ArchiveIcon, UsersRoundIcon, MessageCircleQuestionIcon, TicketPercentIcon } from "lucide-react"
 import { CONFIG } from "./config"
 import { UserRole } from "@/utils/enums/user"
 
@@ -21,6 +21,7 @@ export const ADMIN_SIDEBAR_ITEMS = [
     { label: "Events", href: CONFIG.ROUTES.ADMIN.EVENTS, icon: CalendarIcon, disabled: false, roles: ADMIN_ONLY },
     { label: "Courses", href: CONFIG.ROUTES.ADMIN.COURSES, icon: TicketIcon, disabled: false, roles: ADMIN_ONLY },
     { label: "Payments", href: CONFIG.ROUTES.ADMIN.PAYMENTS, icon: BanknoteIcon, disabled: false, roles: ADMIN_ONLY },
+    { label: "Coupons & referrals", href: CONFIG.ROUTES.ADMIN.OFFERS, icon: TicketPercentIcon, disabled: false, roles: ADMIN_ONLY },
     { label: "Finance", href: CONFIG.ROUTES.ADMIN.FINANCE, icon: WalletIcon, disabled: false, roles: ADMIN_ONLY },
     { label: "Grade Submissions", href: CONFIG.ROUTES.ADMIN.SUBMISSIONS, icon: ClipboardCheckIcon, disabled: false, roles: INSTRUCTOR_STAFF },
     { label: "Course assignments", href: CONFIG.ROUTES.ADMIN.ASSIGNMENTS, icon: NotebookPenIcon, disabled: false, roles: INSTRUCTOR_STAFF },
@@ -31,6 +32,7 @@ export const ADMIN_SIDEBAR_ITEMS = [
     { label: "Schedule lectures", href: CONFIG.ROUTES.ADMIN.SCHEDULE_LECTURES, icon: VideoIcon, disabled: false, roles: INSTRUCTOR_STAFF },
     { label: "Batches", href: CONFIG.ROUTES.ADMIN.BATCHES, icon: UsersRoundIcon, disabled: false, roles: INSTRUCTOR_STAFF },
     { label: "Lecture recordings", href: CONFIG.ROUTES.ADMIN.RECORDINGS, icon: PlaySquareIcon, disabled: false, roles: INSTRUCTOR_STAFF },
+    { label: "Student questions", href: CONFIG.ROUTES.ADMIN.QUESTIONS, icon: MessageCircleQuestionIcon, disabled: false, roles: INSTRUCTOR_STAFF },
     { label: "Attendance", href: CONFIG.ROUTES.ADMIN.ATTENDANCE, icon: UserCheckIcon, disabled: false, roles: INSTRUCTOR_STAFF },
     { label: "Uploaded images", href: CONFIG.ROUTES.ADMIN.IMAGES, icon: ImageIcon, disabled: false, roles: ADMIN_ONLY },
 ] as const

@@ -6,6 +6,7 @@ import Providers from "@/lib/providers";
 import { TopLoaderWrapper } from "@/lib/ui/useable-components/top-loader-wrapper";
 import { Toaster } from 'react-hot-toast';
 import { ReactNode } from "react";
+import { ServiceWorkerRegistrar } from "@/lib/ui/useable-components/push-notifications";
 
 
 const geistSans = Geist({
@@ -25,6 +26,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  themeColor: "#071a2b",
 }
 
 export const metadata: Metadata = {
@@ -42,6 +44,9 @@ export const metadata: Metadata = {
     description: DEFAULT_DESCRIPTION,
   },
   robots: { index: true, follow: true },
+  applicationName: SITE_NAME,
+  appleWebApp: { capable: true, title: "TechOn", statusBarStyle: "default" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
 export default function RootLayout({
@@ -58,6 +63,7 @@ export default function RootLayout({
         <TopLoaderWrapper />
         <Providers>
           <Toaster position="bottom-right" />
+          <ServiceWorkerRegistrar />
           {children}
         </Providers>
       </body>

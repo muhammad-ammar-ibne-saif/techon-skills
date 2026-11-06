@@ -17,6 +17,7 @@ import {
 } from "@/lib/graphql"
 import { isDueMonthReached } from "@/lib/helpers"
 import { useUser } from "@/lib/providers/user"
+import { PushNotificationsToggle } from "@/lib/ui/useable-components/push-notifications"
 
 type Notification = {
   id: string
@@ -163,6 +164,7 @@ export function NotificationsDropdown() {
               </ul>
             )}
           </div>
+          <PushNotificationsToggle />
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

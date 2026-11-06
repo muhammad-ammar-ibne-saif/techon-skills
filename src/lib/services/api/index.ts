@@ -7,6 +7,8 @@ import {
     IContactFormSubmission,
     IEnrollmentApplication,
     IEnrollmentApplicationSubmit,
+    IEnrollmentCodeResult,
+    IOpenBatch,
     IUser,
     IUserProfileInfo,
 } from "@/utils/interfaces";
@@ -225,6 +227,36 @@ class ApiService {
             },
         });
         return handleApiResponse<IEnrollmentApplication>(response);
+    }
+
+    /** Checks a coupon or referral code against the selected courses. */
+    checkEnrollmentCode = async (body: { code: string; courses: string[]; email?: string }): Promise<ApiResponse<IEnrollmentCodeResult>> => {
+        const response = await fetchURL({
+            path: CONFIG.BACKEND_PATHS.ENROLLMENT_APPLICATION.CHECK_CODE,
+            isGraphQL: false,
+            options: { method: FetchMethod.POST, body: JSON.stringify(body), headers: { "Content-Type": "application/json" } },
+        });
+        return handleApiResponse<IEnrollmentCodeResult>(response);
+    }
+
+    /** Batches open for enrollment, keyed by course slug. */
+    getOpenBatches = async (slugs: string[]): Promise<ApiResponse<Record<string, IOpenBatch[]>>> => {
+        const q = new URLSearchParams({ courses: slugs.join(",") });
+        const response = await fetchURL({
+            path: `${CONFIG.BACKEND_PATHS.ENROLLMENT_APPLICATION.BATCHES}?${q.toString()}`,
+            isGraphQL: false,
+            options: { method: FetchMethod.GET },
+        });
+        return handleApiResponse<Record<string, IOpenBatch[]>>(response);
+    }
+
+    joinBatchWaitlist = async (body: { batchId: string; name: string; email: string; phone?: string }): Promise<ApiResponse<null>> => {
+        const response = await fetchURL({
+            path: CONFIG.BACKEND_PATHS.ENROLLMENT_APPLICATION.WAITLIST,
+            isGraphQL: false,
+            options: { method: FetchMethod.POST, body: JSON.stringify(body), headers: { "Content-Type": "application/json" } },
+        });
+        return handleApiResponse<null>(response);
     }
 
     getEnrollmentApplications = async (

@@ -18,6 +18,35 @@ import {
   type IApiCourse,
 } from "@/lib/helpers"
 import { GET_COURSE_BY_SLUG } from "@/lib/graphql"
+import { formatStartDate, seatsText, useOpenBatches } from "@/lib/ui/screens/public/enrollment/enrollment-extras"
+
+/** Open batches of the course with start dates and seats, linking to the enrollment form. */
+function UpcomingBatches({ slug, title, enrollHref }: { slug: string; title: string; enrollHref: string }) {
+  const courses = useMemo(() => [{ slug, title }], [slug, title])
+  const list = useOpenBatches(courses).batches[slug] ?? []
+  if (!list.length) return null
+  return (
+    <div className="border-border border-t px-5 py-4">
+      <div className="text-muted-foreground font-mono text-[10px]">upcoming batches</div>
+      <ul className="mt-2 space-y-2 text-sm">
+        {list.map((b) => (
+          <li key={b.id} className="flex items-center justify-between gap-3">
+            <span>
+              <span className="font-medium">{b.name}</span>
+              {formatStartDate(b.startDate) && <span className="text-muted-foreground"> · starts {formatStartDate(b.startDate)}</span>}
+            </span>
+            <Link
+              href={enrollHref}
+              className={cn("shrink-0 text-xs font-medium", b.isFull ? "text-destructive" : "text-(--site-accent) hover:underline")}
+            >
+              {b.isFull ? "Full · join waitlist" : seatsText(b)}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
 import { StepLoop } from "@/lib/ui/screens/public/landing"
 import {
   PageIntro,
@@ -148,6 +177,7 @@ export const PublicCourseDetailScreen = ({ slug }: { slug: string }) => {
                 <dd className="mt-1 text-lg font-semibold">{formatCoursePrice(course)}</dd>
               </div>
             </dl>
+            <UpcomingBatches slug={course.slug} title={course.title} enrollHref={enrollHref} />
           </div>
         </div>
       </section>

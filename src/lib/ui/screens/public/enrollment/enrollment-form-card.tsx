@@ -28,7 +28,8 @@ import { Separator } from "@/lib/ui/useable-components/separator"
 import { Textarea } from "@/lib/ui/useable-components/textarea"
 import { FormSubmitSuccess } from "@/lib/ui/useable-components/form-submit-success"
 import { CONFIG, PAYMENT_BANK_DETAILS, SITE_PHONE_DISPLAY, SITE_WHATSAPP_URL } from "@/utils/constants"
-import type { IContactFormCourse, IEnrollmentApplicationSubmit } from "@/utils/interfaces"
+import type { IContactFormCourse, IEnrollmentApplicationSubmit, IEnrollmentCodeResult } from "@/utils/interfaces"
+import { BatchPicker, DiscountCodeField } from "./enrollment-extras"
 import { LoggerLevel } from "@/utils/enums"
 
 const PAYMENT_PLAN_OPTIONS = [
@@ -41,12 +42,14 @@ function PaymentPlanOptions({
   courses,
   value,
   onChange,
+  code,
 }: {
   courses: IContactFormCourse[]
   value: string
   onChange: (plan: (typeof PAYMENT_PLAN_OPTIONS)[number]["value"]) => void
+  code?: IEnrollmentCodeResult | null
 }) {
-  const { currency, totals } = useEnrollmentFees(courses)
+  const { currency, totals } = useEnrollmentFees(courses, code?.discounts)
   const amounts = (plan: (typeof PAYMENT_PLAN_OPTIONS)[number]["value"]) => {
     const t = totals[plan]
     if (!t) return null
@@ -55,7 +58,7 @@ function PaymentPlanOptions({
         <>
           <span className="text-foreground font-semibold">{formatFee(currency, t.payNow)}</span>{" "}
           <span className="line-through">{formatFee(currency, t.courseFee)}</span>{" "}
-          <span className="font-medium text-emerald-600 dark:text-emerald-400">Save {formatFee(currency, t.discount)}</span>
+          <span className="font-medium text-emerald-600 dark:text-emerald-400">Save {formatFee(currency, t.discount + t.codeDiscount)}</span>
         </>
       ) : (
         <span className="text-foreground font-semibold">{formatFee(currency, t.payNow)}</span>
@@ -153,6 +156,7 @@ export function EnrollmentFormCard({
   onSuccess,
 }: EnrollmentFormCardProps) {
   const [sessionDone, setSessionDone] = useState(false)
+  const [code, setCode] = useState<IEnrollmentCodeResult | null>(null)
   useEffect(() => {
     if (typeof window === "undefined") return
     try {
@@ -194,6 +198,7 @@ export function EnrollmentFormCard({
       phone: getFullPhone(values.phone),
       paymentPlan: values.paymentPlan,
       feePaymentScreenshotDataUrl: feePaymentScreenshotDataUrl ?? "",
+      discountCode: code?.code,
     }
     const toastId = toast.loading("Submitting enrollment…")
     logger({
@@ -355,17 +360,37 @@ export function EnrollmentFormCard({
               <p className="text-destructive mt-1 text-xs">{errors.courses}</p>
             )}
           </div>
+          <BatchPicker
+            courses={values.courses}
+            onChange={(courses: IContactFormCourse[]) => setFieldValue("courses", courses)}
+            applicant={{
+              name: [values.firstName, values.lastName].filter(Boolean).join(" ").trim(),
+              email: values.email,
+              phone: getFullPhone(values.phone),
+            }}
+          />
           <fieldset className="w-full">
             <legend className="text-muted-foreground mb-1.5 text-xs font-medium">How will you pay? *</legend>
             <PaymentPlanOptions
               courses={values.courses}
               value={values.paymentPlan}
               onChange={(plan) => setFieldValue("paymentPlan", plan)}
+              code={code}
             />
+            <div className="mt-3">
+              <DiscountCodeField
+                courses={values.courses}
+                email={values.email}
+                applied={code}
+                onApplied={setCode}
+                inputClassName={softSurface ? "rounded-xl border-border bg-muted/40 dark:bg-muted/25" : undefined}
+              />
+            </div>
             <ContactCourseFeesSummary
               selectedCourses={values.courses}
               paymentPlan={values.paymentPlan}
               className="mt-3"
+              code={code}
             />
           </fieldset>
           <PaymentAccountCard />

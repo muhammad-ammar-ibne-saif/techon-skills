@@ -8,6 +8,11 @@ export const GET_BATCHES = gql`
             name
             isArchived
             studentCount
+            startDate
+            seats
+            seatsLeft
+            isOpenForEnrollment
+            waitlistCount
             createdAt
         }
     }
