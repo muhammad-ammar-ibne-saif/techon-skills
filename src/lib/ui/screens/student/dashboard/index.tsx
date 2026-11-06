@@ -2,7 +2,8 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { useQuery } from "@apollo/client/react"
+import { useMutation, useQuery } from "@apollo/client/react"
+import toast from "react-hot-toast"
 import {
   AwardIcon,
   BookOpenIcon,
@@ -11,6 +12,7 @@ import {
   ClockIcon,
   ListTodoIcon,
   Loader2Icon,
+  PlayCircleIcon,
   PlayIcon,
   UserCheckIcon,
 } from "lucide-react"
@@ -20,8 +22,14 @@ import { CONFIG } from "@/utils/constants"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/lib/ui/useable-components/card"
 import { ProgressRing } from "@/lib/ui/useable-components/progress-ring"
 import { parseDate, formatTime } from "@/lib/helpers"
-import { GET_MY_ATTENDANCE_SUMMARIES, GET_MY_PROGRESS, GET_UPCOMING_LECTURES } from "@/lib/graphql"
+import { JOIN_LECTURE, GET_CONTINUE_WATCHING, GET_MY_ATTENDANCE_SUMMARIES, GET_MY_PROGRESS, GET_UPCOMING_LECTURES } from "@/lib/graphql"
+import { RecordingPlayerDialog, formatClock } from "@/lib/ui/useable-components/recording-player"
+import { WatchedBar, watchedPercent, type RecordingProgress } from "@/lib/ui/screens/student/recordings"
 import { useUser } from "@/lib/providers/user"
+import { PushNotificationsBanner } from "@/lib/ui/useable-components/push-notifications"
+
+/** Must match the API: the class opens this many minutes before it starts. */
+const JOIN_EARLY_MINUTES = 10
 
 type LectureApi = {
   id: string
@@ -30,6 +38,12 @@ type LectureApi = {
   meetUrl?: string | null
   durationMins: number
   startAt: string
+}
+
+/** Points a tab we opened at the class link, cut off from this page. */
+function sendTabTo(tab: Window, url: string) {
+  tab.opener = null
+  tab.location.href = url
 }
 
 export const StudentMyLecturesScreen = () => {
@@ -74,13 +88,48 @@ export const StudentMyLecturesScreen = () => {
     }>
   }>(GET_MY_ATTENDANCE_SUMMARIES, { skip: !userProfileInfo?.id, fetchPolicy: "network-only" })
 
+  const { data: continueData, refetch: refetchContinue } = useQuery<{
+    getContinueWatching: Array<{
+      recording: { id: string; title: string; durationSeconds: number | null; course?: { title?: string | null } | null }
+      progress: RecordingProgress
+    }>
+  }>(GET_CONTINUE_WATCHING, { variables: { limit: 3 }, skip: !userProfileInfo?.id, fetchPolicy: "network-only" })
+  const continueItems = continueData?.getContinueWatching ?? []
+  const [playing, setPlaying] = useState<{ id: string; title: string; startAt: number } | null>(null)
+
+  const [joinLecture] = useMutation<{ joinLecture: { meetUrl: string; attendanceStatus: string | null } }>(JOIN_LECTURE)
+  const [joiningId, setJoiningId] = useState<string | null>(null)
+  /** Opens the class and marks attendance. The tab opens first so popup blockers allow it. */
+  const joinClass = async (lectureId: string) => {
+    const tab = window.open("", "_blank")
+    setJoiningId(lectureId)
+    try {
+      const { data } = await joinLecture({ variables: { lectureId } })
+      const url = data?.joinLecture.meetUrl
+      if (!url) throw new Error("The class link isn't available.")
+      if (tab) {
+        sendTabTo(tab, url)
+      } else {
+        window.location.assign(url)
+      }
+      const status = data?.joinLecture.attendanceStatus
+      if (status === "PRESENT") toast.success("You're marked present.")
+      else if (status === "LATE") toast("Joined late: you're marked late.")
+    } catch (e) {
+      tab?.close()
+      toast.error(e instanceof Error ? e.message : "Couldn't join the class.")
+    } finally {
+      setJoiningId(null)
+    }
+  }
+
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(t)
   }, [])
 
   const progress = progressData?.getMyProgress
-  const attendanceSummaries = attendanceData?.getMyAttendanceSummaries ?? []
+  const attendanceSummaries = useMemo(() => attendanceData?.getMyAttendanceSummaries ?? [], [attendanceData])
   const overallAttendance = useMemo(() => {
     const withPct = attendanceSummaries.filter((s) => s.percentage != null && s.sessionsTaken > 0)
     if (!withPct.length) return null
@@ -91,7 +140,7 @@ export const StudentMyLecturesScreen = () => {
     if (!progress?.courses.length) return 0
     const sum = progress.courses.reduce((a, c) => a + c.progressPercent, 0)
     return Math.round(sum / progress.courses.length)
-  }, [progress?.courses])
+  }, [progress])
 
   const upcoming = useMemo(() => {
     const list = lectureData?.getUpcomingLectures ?? []
@@ -127,6 +176,8 @@ export const StudentMyLecturesScreen = () => {
           Your real progress across quizzes and assignments — updated from your actual submissions and attempts.
         </p>
       </div>
+
+      <PushNotificationsBanner />
 
       {loadingProgress ? (
         <div className="mb-8 flex items-center gap-2 text-muted-foreground">
@@ -299,6 +350,37 @@ export const StudentMyLecturesScreen = () => {
         </Link>
       </div>
 
+      {continueItems.length > 0 && (
+        <div className="mb-8">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-xl font-semibold">Continue watching</h2>
+            <Link href={CONFIG.ROUTES.STUDENT.RECORDINGS} className="text-sm font-medium text-(--brand-primary) hover:underline">
+              All recordings
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {continueItems.map(({ recording: r, progress: p }) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => setPlaying({ id: r.id, title: r.title, startAt: p.positionSeconds })}
+                className="group flex flex-col gap-2 rounded-2xl border p-4 text-left transition-all hover:shadow-md"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold">{r.title}</div>
+                    <div className="text-muted-foreground truncate text-xs">{r.course?.title}</div>
+                  </div>
+                  <PlayCircleIcon className="text-(--brand-primary) size-6 shrink-0 transition group-hover:scale-110" />
+                </div>
+                <WatchedBar percent={watchedPercent(p, r.durationSeconds)} />
+                <div className="text-muted-foreground text-xs">Continue from {formatClock(p.positionSeconds)}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="mb-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-xl font-semibold">Upcoming lectures</h2>
@@ -319,7 +401,9 @@ export const StudentMyLecturesScreen = () => {
               const startAtMs = parseDate(l.startAt)?.getTime() ?? 0
               const c = toCountdown(startAtMs)
               const startsAt = startAtMs ? new Date(startAtMs) : null
-              const canJoin = Boolean(l.meetUrl)
+              const endMs = startAtMs + l.durationMins * 60_000
+              const isOpen = startAtMs > 0 && now >= startAtMs - JOIN_EARLY_MINUTES * 60_000 && now <= endMs
+              const opensIn = toCountdown(startAtMs - JOIN_EARLY_MINUTES * 60_000)
               return (
                 <Card key={l.id} className="rounded-3xl">
                   <CardHeader className="space-y-2">
@@ -339,21 +423,33 @@ export const StudentMyLecturesScreen = () => {
                           <ClockIcon className="size-3.5" /> Countdown
                         </div>
                         <div className="mt-1 font-semibold">
-                          {c.isLive ? "Live now" : `${c.hrs}h ${c.mins}m ${c.secs}s`}
+                          {c.isLive ? (now <= endMs ? "Live now" : "Ended") : `${c.hrs}h ${c.mins}m ${c.secs}s`}
                         </div>
                       </div>
                     </div>
-                    {canJoin ? (
-                      <Button asChild variant="brand-secondary" shape="pill" className="w-full">
-                        <a href={l.meetUrl!} target="_blank" rel="noreferrer">
-                          <PlayIcon className="size-4" />
-                          Join live class
-                        </a>
-                      </Button>
-                    ) : (
+                    {!l.meetUrl ? (
                       <Button variant="outline" shape="pill" className="w-full" disabled>
                         Meet link not set yet
                       </Button>
+                    ) : isOpen ? (
+                      <Button
+                        variant="brand-secondary"
+                        shape="pill"
+                        className="w-full"
+                        disabled={joiningId === l.id}
+                        onClick={() => void joinClass(l.id)}
+                      >
+                        {joiningId === l.id ? <Loader2Icon className="size-4 animate-spin" /> : <PlayIcon className="size-4" />}
+                        Join live class
+                      </Button>
+                    ) : (
+                      <Button variant="outline" shape="pill" className="w-full" disabled>
+                        Opens in {opensIn.hrs > 0 ? `${opensIn.hrs}h ` : ""}
+                        {opensIn.mins}m {opensIn.secs}s
+                      </Button>
+                    )}
+                    {isOpen && (
+                      <p className="text-muted-foreground text-center text-xs">Joining from here marks your attendance.</p>
                     )}
                   </CardContent>
                 </Card>
@@ -362,6 +458,16 @@ export const StudentMyLecturesScreen = () => {
           </div>
         )}
       </div>
+
+      <RecordingPlayerDialog
+        recordingId={playing?.id ?? null}
+        title={playing?.title ?? ""}
+        startAt={playing?.startAt ?? null}
+        onClose={() => {
+          setPlaying(null)
+          window.setTimeout(() => void refetchContinue(), 600)
+        }}
+      />
     </div>
   )
 }

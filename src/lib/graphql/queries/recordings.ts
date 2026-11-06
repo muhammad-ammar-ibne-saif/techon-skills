@@ -45,6 +45,16 @@ export const GET_MY_RECORDINGS = gql`
             description
             recordedAt
             durationSeconds
+            myProgress { positionSeconds durationSeconds completed }
+        }
+    }
+`;
+
+export const GET_CONTINUE_WATCHING = gql`
+    query GetContinueWatching($limit: Int) {
+        getContinueWatching(limit: $limit) {
+            recording { id courseId course { id title } title recordedAt durationSeconds }
+            progress { positionSeconds durationSeconds completed lastWatchedAt }
         }
     }
 `;

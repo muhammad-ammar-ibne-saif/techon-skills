@@ -5,10 +5,11 @@ import Link from "next/link"
 import { useQuery } from "@apollo/client/react"
 import { ArrowRightIcon, CheckIcon, ChevronRightIcon, StarIcon } from "lucide-react"
 
-import { cn } from "@/lib/helpers"
+import { cn, courseFreeTag } from "@/lib/helpers"
 import { GET_PUBLIC_SITE_STATS } from "@/lib/graphql"
 import { useCourses } from "@/lib/providers/courses"
 import {
+  FreeTag,
   SectionLabel,
   SectionTitle,
   siteButton,
@@ -19,6 +20,7 @@ import { CONFIG, SITE_WHATSAPP_URL } from "@/utils/constants"
 import { FAQS } from "@/utils/constants/faqs"
 import { GOOGLE_RATING, GOOGLE_REVIEWS, GOOGLE_WRITE_REVIEW_URL } from "@/utils/constants/google-reviews"
 import type { ICourse } from "@/utils/interfaces"
+import { DealsSection } from "./deals"
 
 const ROUTES = CONFIG.ROUTES.PUBLIC
 
@@ -47,6 +49,7 @@ export const LandingPageScreen = () => {
   return (
     <div className="w-full min-w-0">
       <Hero courses={courses} />
+      <DealsSection />
       <BuildSection />
       <TracksSection courses={courses} loading={coursesLoading} />
       <MethodSection />
@@ -294,6 +297,7 @@ export function CourseRows({ courses, loading }: { courses: ICourse[]; loading: 
               <span className="text-muted-foreground font-mono text-[10px]">T.{String(i + 1).padStart(2, "0")}</span>
               <span className="text-lg font-semibold tracking-tight transition-colors group-hover:text-(--site-accent) sm:text-2xl">
                 {c.title}
+                {courseFreeTag(c) && <FreeTag className="ml-2 align-middle">{courseFreeTag(c)}</FreeTag>}
               </span>
               <span className="text-muted-foreground col-start-2 row-start-2 truncate text-xs sm:col-start-auto sm:row-start-auto">
                 {tools || c.subtitle}

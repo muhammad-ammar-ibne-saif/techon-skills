@@ -10,6 +10,7 @@ import {
   Loader2Icon,
   PencilIcon,
   PlusIcon,
+  SettingsIcon,
   UsersRoundIcon,
   XIcon,
 } from "lucide-react"
@@ -30,8 +31,9 @@ import {
 import { filterCoursesForGrader } from "@/lib/helpers/grader-courses"
 import { cn, getStaffEyebrow } from "@/lib/helpers"
 import { useUser } from "@/lib/providers/user"
+import { BatchEnrollmentPanel, batchEnrollmentSummary, type EnrollmentBatch } from "./enrollment-panel"
 
-type Batch = { id: string; courseId: string; name: string; isArchived: boolean; studentCount: number }
+type Batch = EnrollmentBatch & { courseId: string; isArchived: boolean; studentCount: number }
 type RosterStudent = { id: string; fullName: string | null; email: string; batchId: string | null }
 
 const NO_BATCH = ""
@@ -50,6 +52,7 @@ export const AdminBatchesScreen = () => {
   const [mergeOpen, setMergeOpen] = useState(false)
   const [mergeInto, setMergeInto] = useState("")
   const [mergeFrom, setMergeFrom] = useState<Set<string>>(new Set())
+  const [settingsId, setSettingsId] = useState<string | null>(null)
 
   const { data: coursesData } = useQuery<{ getCourses: { id: string; title: string }[] }>(GET_COURSES)
   const courses = useMemo(
@@ -230,7 +233,8 @@ export const AdminBatchesScreen = () => {
               ) : (
                 <ul className="divide-y rounded-2xl border">
                   {listedBatches.map((b) => (
-                    <li key={b.id} className={cn("flex items-center gap-2 px-3 py-2.5", b.isArchived && "opacity-60")}>
+                    <li key={b.id} className={cn(b.isArchived && "opacity-60")}>
+                    <div className="flex items-center gap-2 px-3 py-2.5">
                       {renameId === b.id ? (
                         <form
                           className="flex flex-1 items-center gap-1"
@@ -271,7 +275,20 @@ export const AdminBatchesScreen = () => {
                               {b.studentCount} student{b.studentCount === 1 ? "" : "s"}
                               {b.isArchived ? " · archived" : ""}
                             </div>
+                            {batchEnrollmentSummary(b) && (
+                              <div className="text-muted-foreground truncate text-[11px]">{batchEnrollmentSummary(b)}</div>
+                            )}
                           </button>
+                          {!b.isArchived && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Start date, seats and waiting list"
+                              onClick={() => setSettingsId(settingsId === b.id ? null : b.id)}
+                            >
+                              <SettingsIcon className="size-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -297,6 +314,10 @@ export const AdminBatchesScreen = () => {
                           </Button>
                         </>
                       )}
+                    </div>
+                    {settingsId === b.id && !b.isArchived && (
+                      <BatchEnrollmentPanel key={b.id} batch={b} onSaved={refreshAll} />
+                    )}
                     </li>
                   ))}
                 </ul>

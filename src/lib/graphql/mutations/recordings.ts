@@ -61,3 +61,13 @@ export const UNLINK_RECORDING_FOLDER = gql`
         unlinkRecordingFolder(id: $id, removeRecordings: $removeRecordings)
     }
 `;
+
+export const SAVE_RECORDING_PROGRESS = gql`
+    mutation SaveRecordingProgress($recordingId: ID!, $positionSeconds: Float!, $durationSeconds: Float) {
+        saveRecordingProgress(recordingId: $recordingId, positionSeconds: $positionSeconds, durationSeconds: $durationSeconds) {
+            recordingId
+            positionSeconds
+            completed
+        }
+    }
+`;

@@ -78,15 +78,29 @@ export const contactFormValidationSchema = Yup.object({
   message: Yup.string().trim().max(50000, "Message is too long.").optional(),
 })
 
+const feeScreenshotSchema = Yup.mixed()
+  .required("Please attach a screenshot of your fee payment.")
+  .test("fee-image", "Please attach an image file (PNG or JPG).", (v) => v instanceof File && v.type.startsWith("image/"))
+  .test("fee-size", "Image must be under 5 MB.", (v) => v instanceof File && v.size <= 5 * 1024 * 1024)
+
 export const enrollmentFormValidationSchema = contactFormValidationSchema.shape({
   paymentPlan: Yup.string()
     .oneOf(["FULL", "TWO_INSTALLMENTS"])
     .required("Choose how you'll pay."),
-  feeScreenshot: Yup.mixed()
-    .required("Please attach a screenshot of your fee payment.")
-    .test("fee-image", "Please attach an image file (PNG or JPG).", (v) => v instanceof File && v.type.startsWith("image/"))
-    .test("fee-size", "Image must be under 5 MB.", (v) => v instanceof File && v.size <= 5 * 1024 * 1024),
+  feeScreenshot: feeScreenshotSchema,
 })
+
+/** Same rules, but no screenshot when the picked courses cost nothing (free courses or a 100% code). */
+export function enrollmentFormValidationSchemaFor(needsPayment: (courses: ContactFormValues["courses"]) => boolean) {
+  return contactFormValidationSchema.shape({
+    paymentPlan: Yup.string()
+      .oneOf(["FULL", "TWO_INSTALLMENTS"])
+      .required("Choose how you'll pay."),
+    feeScreenshot: Yup.mixed().when("courses", (values: unknown[], schema) =>
+      needsPayment((values[0] as ContactFormValues["courses"] | undefined) ?? []) ? feeScreenshotSchema : schema.nullable().notRequired()
+    ),
+  })
+}
 
 export function getContactFormInitialValues(
   initialCourse?: { slug: string; title: string } | null

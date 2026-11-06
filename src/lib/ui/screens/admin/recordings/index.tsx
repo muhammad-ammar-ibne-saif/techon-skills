@@ -241,7 +241,7 @@ export const AdminRecordingsScreen = () => {
             <ol className="text-muted-foreground mt-1 list-decimal space-y-0.5 pl-5">
               <li>
                 In Google Drive, share each course or batch folder with{" "}
-                <span className="text-primary select-all font-mono text-xs">{setup.serviceAccountEmail}</span> as <b>Viewer</b>.
+                <span className="text-primary select-all font-mono text-xs">{setup.serviceAccountEmail}</span> as <b>Editor</b> (Meet recordings block downloads for Viewers; the portal only reads).
                 Keep General access on &quot;Restricted&quot; and don&apos;t share it with students.
               </li>
               <li>

@@ -7,12 +7,14 @@ import { AwardIcon, Loader2Icon } from "lucide-react"
 import { Button } from "@/lib/ui/useable-components/button"
 import { Card, CardContent } from "@/lib/ui/useable-components/card"
 import { GET_MY_CERTIFICATES } from "@/lib/graphql"
+import { CertificateShareButtons } from "@/lib/ui/useable-components/certificate-share"
 import { cn } from "@/lib/helpers"
 import { CONFIG } from "@/utils/constants"
 import { formatDateLong } from "@/lib/helpers"
 
 type CertRow = {
   id: string
+  verificationCode: string
   courseName: string
   percentage: number
   grade: string
@@ -92,9 +94,12 @@ export const StudentCertificatesScreen = () => {
                         {formatDateLong(c.issuedAt ?? c.createdAt)}
                       </td>
                       <td className="p-4">
-                        <Button asChild variant="brand-secondary" size="sm" shape="pill">
-                          <Link href={`${CONFIG.ROUTES.STUDENT.CERTIFICATES}/${c.id}`}>View</Link>
-                        </Button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button asChild variant="brand-secondary" size="sm" shape="pill">
+                            <Link href={`${CONFIG.ROUTES.STUDENT.CERTIFICATES}/${c.id}`}>View</Link>
+                          </Button>
+                          {c.status === "live" && <CertificateShareButtons cert={c} compact />}
+                        </div>
                       </td>
                     </tr>
                   ))}

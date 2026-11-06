@@ -36,3 +36,12 @@ export const DELETE_LECTURE_SERIES = gql`
     deleteLectureSeries(seriesId: $seriesId)
   }
 `;
+
+export const JOIN_LECTURE = gql`
+    mutation JoinLecture($lectureId: ID!) {
+        joinLecture(lectureId: $lectureId) {
+            meetUrl
+            attendanceStatus
+        }
+    }
+`;

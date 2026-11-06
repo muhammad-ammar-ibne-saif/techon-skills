@@ -251,7 +251,10 @@ function PublicEnrollmentApplicationsPanel() {
                           <td className="p-4 align-top">
                             <ul className="list-inside list-disc text-xs text-muted-foreground">
                               {app.courses.map((c) => (
-                                <li key={c.slug}>{c.title}</li>
+                                <li key={c.slug}>
+                                  {c.title}
+                                  {c.batchName ? <span className="text-foreground"> · {c.batchName}</span> : null}
+                                </li>
                               ))}
                             </ul>
                             <div className="mt-1.5 text-xs font-medium">
@@ -261,20 +264,33 @@ function PublicEnrollmentApplicationsPanel() {
                                   ? `Asks for ${app.requestedInstallments ?? "?"} installments`
                                   : "2 installments"}
                             </div>
+                            {app.discountCode && (
+                              <div className="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                                Code {app.discountCode}
+                                {app.discountLabel ? ` · ${app.discountLabel}` : ""}
+                                {app.courseDiscounts?.length
+                                  ? ` (−PKR ${app.courseDiscounts.reduce((s, d) => s + d.amount, 0).toLocaleString()})`
+                                  : ""}
+                              </div>
+                            )}
                           </td>
                           <td className="p-4 align-top text-xs text-muted-foreground whitespace-nowrap">
                             {formatDateTime(app.createdAt)}
                           </td>
                           <td className="p-4 align-top">
-                            <a
-                              href={proofUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-(--brand-primary) dark:text-(--text-primary-dark) inline-flex items-center gap-1 text-xs font-medium underline-offset-4 hover:underline"
-                            >
-                              <ExternalLinkIcon className="size-3.5" />
-                              View
-                            </a>
+                            {proofUrl ? (
+                              <a
+                                href={proofUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-(--brand-primary) dark:text-(--text-primary-dark) inline-flex items-center gap-1 text-xs font-medium underline-offset-4 hover:underline"
+                              >
+                                <ExternalLinkIcon className="size-3.5" />
+                                View
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">Free: no payment</span>
+                            )}
                           </td>
                           <td className="p-4 align-top">
                             <span

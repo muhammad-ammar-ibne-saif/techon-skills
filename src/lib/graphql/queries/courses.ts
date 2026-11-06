@@ -14,6 +14,8 @@ export const GET_COURSES = gql`
             courseDurationInMonths
             totalNumberOfInstallments
             currency
+            isFree
+            freeLabel
             technologies {
                 label
                 description
@@ -42,6 +44,8 @@ export const GET_COURSE = gql`
             courseDurationInMonths
             totalNumberOfInstallments
             currency
+            isFree
+            freeLabel
             technologies {
                 label
                 description
@@ -70,6 +74,8 @@ export const GET_COURSE_BY_SLUG = gql`
             courseDurationInMonths
             totalNumberOfInstallments
             currency
+            isFree
+            freeLabel
             technologies {
                 label
                 description

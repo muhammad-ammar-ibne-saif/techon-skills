@@ -71,7 +71,16 @@ export interface ICourse {
   technologiesSection: ICourseTechnologiesSection
   modules: ICourseModule[]
   articleFeatures: ICourseArticleFeature[]
+  /** Free (complimentary) course: no fee is charged. */
+  isFree?: boolean
+  /** Tag shown on a free course, e.g. "Free" or "Complimentary". */
+  freeLabel?: string
 }
 
 /** Contact form / API: course reference for linking to Course documents (slug + title). */
-export type IContactFormCourse = Pick<ICourse, "slug" | "title">
+export type IContactFormCourse = Pick<ICourse, "slug" | "title"> & {
+  /** Enrollment form: the batch picked for this course. */
+  batchId?: string | null
+  /** Admin list: name of the picked batch. */
+  batchName?: string | null
+}

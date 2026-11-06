@@ -1,14 +1,15 @@
 "use client"
 
 import type { FormEvent } from "react"
-import { startTransition, useEffect, useState } from "react"
+import { startTransition, useEffect, useMemo, useState } from "react"
 import { Formik, getIn, type FormikTouched } from "formik"
 import toast from "react-hot-toast"
 import { CopyIcon, WalletIcon } from "lucide-react"
 
-import { cn, getApiDisplayMessage, logger } from "@/lib/helpers"
+import { cn, courseFreeTag, getApiDisplayMessage, logger } from "@/lib/helpers"
+import { useCourses } from "@/lib/providers/courses"
 import {
-  enrollmentFormValidationSchema,
+  enrollmentFormValidationSchemaFor,
   getEnrollmentFormInitialValues,
   readFeeScreenshotAsDataUrl,
   type EnrollmentFormValues,
@@ -28,7 +29,8 @@ import { Separator } from "@/lib/ui/useable-components/separator"
 import { Textarea } from "@/lib/ui/useable-components/textarea"
 import { FormSubmitSuccess } from "@/lib/ui/useable-components/form-submit-success"
 import { CONFIG, PAYMENT_BANK_DETAILS, SITE_PHONE_DISPLAY, SITE_WHATSAPP_URL } from "@/utils/constants"
-import type { IContactFormCourse, IEnrollmentApplicationSubmit } from "@/utils/interfaces"
+import type { IContactFormCourse, IEnrollmentApplicationSubmit, IEnrollmentCodeResult } from "@/utils/interfaces"
+import { BatchPicker, DiscountCodeField } from "./enrollment-extras"
 import { LoggerLevel } from "@/utils/enums"
 
 const PAYMENT_PLAN_OPTIONS = [
@@ -41,12 +43,14 @@ function PaymentPlanOptions({
   courses,
   value,
   onChange,
+  code,
 }: {
   courses: IContactFormCourse[]
   value: string
   onChange: (plan: (typeof PAYMENT_PLAN_OPTIONS)[number]["value"]) => void
+  code?: IEnrollmentCodeResult | null
 }) {
-  const { currency, totals } = useEnrollmentFees(courses)
+  const { currency, totals } = useEnrollmentFees(courses, code?.discounts)
   const amounts = (plan: (typeof PAYMENT_PLAN_OPTIONS)[number]["value"]) => {
     const t = totals[plan]
     if (!t) return null
@@ -55,7 +59,7 @@ function PaymentPlanOptions({
         <>
           <span className="text-foreground font-semibold">{formatFee(currency, t.payNow)}</span>{" "}
           <span className="line-through">{formatFee(currency, t.courseFee)}</span>{" "}
-          <span className="font-medium text-emerald-600 dark:text-emerald-400">Save {formatFee(currency, t.discount)}</span>
+          <span className="font-medium text-emerald-600 dark:text-emerald-400">Save {formatFee(currency, t.discount + t.codeDiscount)}</span>
         </>
       ) : (
         <span className="text-foreground font-semibold">{formatFee(currency, t.payNow)}</span>
@@ -140,6 +144,8 @@ function PaymentAccountCard() {
 
 type EnrollmentFormCardProps = {
   initialCourse?: { slug: string; title: string } | null
+  /** Several courses picked up front, e.g. from a deal link (?courses=a,b). Wins over initialCourse. */
+  initialCourses?: { slug: string; title: string }[]
   /** `modal` matches landing field styling for the first-visit dialog. */
   variant?: "page" | "landing" | "modal"
   sent?: boolean
@@ -148,11 +154,33 @@ type EnrollmentFormCardProps = {
 
 export function EnrollmentFormCard({
   initialCourse = null,
+  initialCourses,
   variant = "page",
   sent = false,
   onSuccess,
 }: EnrollmentFormCardProps) {
   const [sessionDone, setSessionDone] = useState(false)
+  const [code, setCode] = useState<IEnrollmentCodeResult | null>(null)
+  const { getCourseBySlug } = useCourses()
+  /** Something to pay unless every course is free (or the code covers the whole fee). */
+  const needsPayment = (courses: IContactFormCourse[]) =>
+    courses.length === 0 ||
+    courses.some((c) => {
+      const full = getCourseBySlug(c.slug)
+      if (courseFreeTag(full)) return false
+      const fee = full?.totalFee ?? 0
+      if (fee <= 0) return true
+      return fee - (code?.discounts.find((d) => d.slug === c.slug)?.amount ?? 0) > 0
+    })
+  const validationSchema = useMemo(
+    () => enrollmentFormValidationSchemaFor(needsPayment),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [getCourseBySlug, code]
+  )
+  const startValues = () => {
+    const values = getEnrollmentFormInitialValues(initialCourse ?? undefined)
+    return initialCourses?.length ? { ...values, courses: initialCourses.map((c) => ({ slug: c.slug, title: c.title })) } : values
+  }
   useEffect(() => {
     if (typeof window === "undefined") return
     try {
@@ -183,7 +211,7 @@ export function EnrollmentFormCard({
     }
     const name = [values.firstName, values.lastName].filter(Boolean).join(" ").trim()
     let feePaymentScreenshotDataUrl: string | undefined
-    if (values.feeScreenshot instanceof File) {
+    if (values.feeScreenshot instanceof File && needsPayment(values.courses)) {
       feePaymentScreenshotDataUrl = await readFeeScreenshotAsDataUrl(values.feeScreenshot)
     }
     const payload: IEnrollmentApplicationSubmit = {
@@ -194,6 +222,7 @@ export function EnrollmentFormCard({
       phone: getFullPhone(values.phone),
       paymentPlan: values.paymentPlan,
       feePaymentScreenshotDataUrl: feePaymentScreenshotDataUrl ?? "",
+      discountCode: code?.code,
     }
     const toastId = toast.loading("Submitting enrollment…")
     logger({
@@ -249,19 +278,20 @@ export function EnrollmentFormCard({
 
   return (
     <Formik
-      initialValues={getEnrollmentFormInitialValues(initialCourse ?? undefined)}
-      validationSchema={enrollmentFormValidationSchema}
+      initialValues={startValues()}
+      validationSchema={validationSchema}
       enableReinitialize
       onSubmit={async (values, { resetForm, setSubmitting }) => {
         const success = await submitEnrollment(values)
         setSubmitting(false)
         if (success)
-          resetForm({ values: getEnrollmentFormInitialValues(initialCourse ?? undefined), touched: {}, errors: {} })
+          resetForm({ values: startValues(), touched: {}, errors: {} })
       }}
       validateOnBlur={false}
       validateOnChange={false}
     >
       {({ values, errors, touched, handleChange, handleBlur, setFieldValue, setFieldTouched, setTouched, submitForm }) => {
+        const paying = needsPayment(values.courses)
         const phoneError =
           getIn(errors, "phone.number") ?? getIn(errors, "phone.countryCode") ?? (typeof errors.phone === "string" ? errors.phone : undefined)
         const markAllTouchedAndSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -355,20 +385,49 @@ export function EnrollmentFormCard({
               <p className="text-destructive mt-1 text-xs">{errors.courses}</p>
             )}
           </div>
+          <BatchPicker
+            courses={values.courses}
+            onChange={(courses: IContactFormCourse[]) => setFieldValue("courses", courses)}
+            applicant={{
+              name: [values.firstName, values.lastName].filter(Boolean).join(" ").trim(),
+              email: values.email,
+              phone: getFullPhone(values.phone),
+            }}
+          />
           <fieldset className="w-full">
-            <legend className="text-muted-foreground mb-1.5 text-xs font-medium">How will you pay? *</legend>
-            <PaymentPlanOptions
-              courses={values.courses}
-              value={values.paymentPlan}
-              onChange={(plan) => setFieldValue("paymentPlan", plan)}
-            />
+            {paying ? (
+              <>
+                <legend className="text-muted-foreground mb-1.5 text-xs font-medium">How will you pay? *</legend>
+                <PaymentPlanOptions
+                  courses={values.courses}
+                  value={values.paymentPlan}
+                  onChange={(plan) => setFieldValue("paymentPlan", plan)}
+                  code={code}
+                />
+              </>
+            ) : (
+              <legend className="mb-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                Free enrollment: nothing to pay.
+              </legend>
+            )}
+            <div className="mt-3">
+              <DiscountCodeField
+                courses={values.courses}
+                email={values.email}
+                applied={code}
+                onApplied={setCode}
+                inputClassName={softSurface ? "rounded-xl border-border bg-muted/40 dark:bg-muted/25" : undefined}
+              />
+            </div>
             <ContactCourseFeesSummary
               selectedCourses={values.courses}
               paymentPlan={values.paymentPlan}
               className="mt-3"
+              code={code}
             />
           </fieldset>
-          <PaymentAccountCard />
+          {paying && <PaymentAccountCard />}
+          {paying && (
           <div className="w-full">
             <div className="text-muted-foreground mb-1.5 text-xs font-medium">Fee payment screenshot *</div>
             <input
@@ -388,6 +447,7 @@ export function EnrollmentFormCard({
               Upload proof that matches the &quot;Pay now&quot; total shown above (one screenshot is enough).
             </p>
           </div>
+          )}
           <Textarea
             placeholder="Message (optional context)"
             className={
