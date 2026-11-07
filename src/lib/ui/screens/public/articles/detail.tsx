@@ -46,17 +46,6 @@ export const PublicArticleDetailScreen = ({ slug }: { slug: string }) => {
     )
   }
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    headline: article.title,
-    description: article.metaDescription || article.excerpt,
-    image: article.coverImage || undefined,
-    author: article.authorName ? { "@type": "Person", name: article.authorName } : undefined,
-    datePublished: article.publishedAt || article.createdAt,
-    dateModified: article.createdAt,
-  }
-
   const meta = [
     "article",
     formatDateLong(article.publishedAt ?? article.createdAt),
@@ -67,7 +56,6 @@ export const PublicArticleDetailScreen = ({ slug }: { slug: string }) => {
 
   return (
     <PostLayout backHref={ARTICLES} backLabel="all articles" meta={meta} title={article.title} intro={article.excerpt || undefined}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {article.coverImage && (
         <div className="border-border bg-muted/40 relative mb-10 aspect-video w-full overflow-hidden rounded-lg border">
           <Image

@@ -85,7 +85,7 @@ export const WebappNavbar = ({ className }: { className?: string }) => {
             <div className="min-w-0 leading-tight">
               <div className="truncate text-sm font-semibold">{COMPANY_NAME}</div>
               <div className="text-muted-foreground truncate text-xs">
-                Learn. Build. Grow.
+                AI-Powered Learning
               </div>
             </div>
           </Link>

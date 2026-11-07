@@ -1,4 +1,14 @@
+import type { Metadata } from "next"
+
+import { pageMetadata } from "@/lib/seo/metadata"
 import { SimpleLegalPage } from "@/lib/ui/screens/public/legal/simple-legal-page"
+
+export const metadata: Metadata = pageMetadata({
+  title: "Refund Policy",
+  description:
+    "TechOn Skills refunds: full refund up to 3 days before your course starts, 50% within the first 7 days, and how to request one by email or WhatsApp.",
+  path: "/refund-policy",
+})
 
 export default function RefundPolicyPage() {
   return (

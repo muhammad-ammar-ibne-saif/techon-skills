@@ -1,4 +1,14 @@
+import type { Metadata } from "next"
+
+import { pageMetadata } from "@/lib/seo/metadata"
 import { SimpleLegalPage } from "@/lib/ui/screens/public/legal/simple-legal-page"
+
+export const metadata: Metadata = pageMetadata({
+  title: "Privacy Policy",
+  description:
+    "How TechOn Skills (Cloudrika Technologies) collects, uses and protects the personal data of students, applicants and visitors, and how to ask for access or deletion.",
+  path: "/privacy-policy",
+})
 
 export default function PrivacyPolicyPage() {
   return (

@@ -1,26 +1,40 @@
 import type { Metadata } from "next"
+
+import { JsonLd, breadcrumbLd, orgRef } from "@/lib/seo/json-ld"
+import { pageMetadata } from "@/lib/seo/metadata"
+import { getSeoArticles } from "@/lib/seo/server-api"
+import { SITE, absoluteUrl } from "@/lib/seo/site"
 import { PublicArticlesScreen } from "@/lib/ui/screens/public/articles"
 
-const SITE_NAME = "TechOn Skills"
-
-export const metadata: Metadata = {
-  title: `Articles | ${SITE_NAME}`,
+export const metadata: Metadata = pageMetadata({
+  title: "Articles: Guides on Coding, Freelancing & Tech Careers",
   description:
-    "Guides, tips, and insights from TechOn Skills to help you build your career in tech. Learn web development, software engineering, and more.",
-  openGraph: {
-    title: `Articles | ${SITE_NAME}`,
-    description:
-      "Guides, tips, and insights from TechOn Skills to help you build your career in tech.",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: `Articles | ${SITE_NAME}`,
-    description: "Guides, tips, and insights from TechOn Skills.",
-  },
-  alternates: { canonical: "https://techonskills.com/articles" },
-}
+    "Practical guides from TechOn Skills on learning web development, mobile apps, software engineering, e-commerce, freelancing and getting your first tech job in Pakistan.",
+  path: "/articles",
+})
 
-export default function ArticlesPage() {
-  return <PublicArticlesScreen />
+export default async function ArticlesPage() {
+  const articles = await getSeoArticles()
+  return (
+    <>
+      <JsonLd
+        data={[
+          {
+            "@type": "Blog",
+            url: absoluteUrl("/articles"),
+            name: `${SITE.name} articles`,
+            publisher: orgRef,
+            blogPost: articles.slice(0, 30).map((a) => ({
+              "@type": "BlogPosting",
+              headline: a.title,
+              url: absoluteUrl(`/articles/${a.slug}`),
+              ...(a.publishedAt ? { datePublished: a.publishedAt } : {}),
+            })),
+          },
+          breadcrumbLd([{ name: "Articles", path: "/articles" }]),
+        ]}
+      />
+      <PublicArticlesScreen />
+    </>
+  )
 }

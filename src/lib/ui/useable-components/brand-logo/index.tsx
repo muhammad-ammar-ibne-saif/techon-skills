@@ -54,7 +54,7 @@ export function BrandLogo({
           <span className={cn("font-sans font-semibold tracking-[0.42em]", compact ? "text-[8px]" : "text-[9px]", skills)}>SKILLS</span>
           <span className={cn("h-px flex-1", line)} />
         </span>
-        {tagline && <span className={cn("mt-1 font-mono text-[8px] tracking-[0.18em]", tag)}>LEARN. BUILD. GROW.</span>}
+        {tagline && <span className={cn("mt-1 font-mono text-[8px] tracking-[0.18em]", tag)}>AI-POWERED LEARNING</span>}
       </span>
     </span>
   )

@@ -1,4 +1,14 @@
+import type { Metadata } from "next"
+
+import { pageMetadata } from "@/lib/seo/metadata"
 import { SimpleLegalPage } from "@/lib/ui/screens/public/legal/simple-legal-page"
+
+export const metadata: Metadata = pageMetadata({
+  title: "Terms of Service",
+  description:
+    "The terms for enrolling in and using TechOn Skills courses and the student dashboard: eligibility, fees, course delivery, conduct, intellectual property and governing law.",
+  path: "/terms-of-service",
+})
 
 export default function TermsOfServicePage() {
   return (

@@ -29,16 +29,19 @@ async function getCertificate(code: string): Promise<{ studentName: string; cour
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { code } = await params
   const cert = await getCertificate(code)
-  if (!cert || cert.status !== "live") return { title: `Verify certificate | ${SITE_NAME}` }
+  // Certificates are shareable but kept out of search results to protect students' privacy.
+  const robots = { index: false, follow: false }
+  if (!cert || cert.status !== "live") return { title: "Verify certificate", robots }
   const title = `${cert.studentName} — ${cert.courseName} certificate`
   const description = `${cert.studentName} completed ${cert.courseName} at ${SITE_NAME} (grade ${cert.grade}). Verified certificate.`
   const url = `${BASE_URL}/certificates/verify/${encodeURIComponent(code)}`
   return {
-    title: `${title} | ${SITE_NAME}`,
+    title,
+    robots,
     description,
     alternates: { canonical: url },
     openGraph: { title, description, url, siteName: SITE_NAME, type: "website" },
-    twitter: { card: "summary", title, description },
+    twitter: { card: "summary_large_image", title, description },
   }
 }
 

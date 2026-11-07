@@ -7,6 +7,7 @@ import { TopLoaderWrapper } from "@/lib/ui/useable-components/top-loader-wrapper
 import { Toaster } from 'react-hot-toast';
 import { ReactNode } from "react";
 import { ServiceWorkerRegistrar } from "@/lib/ui/useable-components/push-notifications";
+import { SITE } from "@/lib/seo/site";
 
 
 const geistSans = Geist({
@@ -19,34 +20,57 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const SITE_NAME = "TechOn Skills"
-const DEFAULT_DESCRIPTION = "Modern, outcome-driven training in web development, mobile app development, software engineering, and e-commerce (Shopify + WordPress + Wix). Starting from PKR 2,500/month only. Career support for top performers."
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#071a2b",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0E1116" },
+  ],
 }
 
+const DEFAULT_TITLE = `${SITE.name}: ${SITE.headline}`
+
 export const metadata: Metadata = {
-  title: { default: `${SITE_NAME} - Learn Web Development, Mobile Apps & Software Engineering`, template: `%s | ${SITE_NAME}` },
-  description: DEFAULT_DESCRIPTION,
+  metadataBase: new URL(SITE.url),
+  title: { default: DEFAULT_TITLE, template: `%s | ${SITE.name}` },
+  description: SITE.shortDescription,
+  keywords: [...SITE.keywords],
+  applicationName: SITE.name,
+  authors: [{ name: SITE.name, url: SITE.url }],
+  creator: SITE.name,
+  publisher: SITE.legalName,
+  category: "education",
+  formatDetection: { telephone: true, email: true, address: true },
   openGraph: {
-    title: SITE_NAME,
-    description: DEFAULT_DESCRIPTION,
+    title: DEFAULT_TITLE,
+    description: SITE.shortDescription,
     type: "website",
-    siteName: SITE_NAME,
+    siteName: SITE.name,
+    locale: SITE.locale,
+    url: SITE.url,
   },
   twitter: {
     card: "summary_large_image",
-    title: SITE_NAME,
-    description: DEFAULT_DESCRIPTION,
+    title: DEFAULT_TITLE,
+    description: SITE.shortDescription,
+    images: ["/opengraph-image"],
   },
-  robots: { index: true, follow: true },
-  applicationName: SITE_NAME,
-  appleWebApp: { capable: true, title: "TechOn", statusBarStyle: "default" },
+  // Full snippets and large image previews let search and AI answers quote the page properly.
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-snippet": -1, "max-image-preview": "large", "max-video-preview": -1 },
+  },
+  appleWebApp: { capable: true, title: SITE.shortName, statusBarStyle: "default" },
   icons: { apple: "/icons/apple-touch-icon.png" },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+    other: process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION ? { "msvalidate.01": process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION } : undefined,
+  },
+  other: { "geo.region": "PK-PB", "geo.placename": "Lahore" },
 };
 
 export default function RootLayout({

@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 
 import { cn } from "@/lib/helpers"
@@ -5,10 +6,20 @@ import { FaqList } from "@/lib/ui/screens/public/landing"
 import { PageIntro, siteButton, siteContainer } from "@/lib/ui/useable-components/site-chrome/ui"
 import { CONFIG, SITE_PHONE_DISPLAY, SITE_WHATSAPP_URL } from "@/utils/constants"
 import { FAQS } from "@/utils/constants/faqs"
+import { JsonLd, breadcrumbLd, faqLd } from "@/lib/seo/json-ld"
+import { pageMetadata } from "@/lib/seo/metadata"
+
+export const metadata: Metadata = pageMetadata({
+  title: "FAQs: Fees, Classes, Certificates & Refunds",
+  description:
+    "Answers to common questions about TechOn Skills: course fees, how live online classes work, missed classes, certificates, career support, enrollment and refunds.",
+  path: "/faqs",
+})
 
 export default function FAQsPage() {
   return (
     <div className="w-full">
+      <JsonLd data={[faqLd(FAQS), breadcrumbLd([{ name: "FAQs", path: "/faqs" }])]} />
       <PageIntro
         label="// faq"
         title="Questions, answered."
