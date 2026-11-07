@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { MenuIcon } from "lucide-react"
 
@@ -14,10 +13,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/lib/ui/useable-components/sheet"
-import TechOnLogo from "@/lib/assets/techon-skills-logo-rm-bg.png"
 import { COMPANY_NAME, NAV_ITEMS } from "@/utils/constants"
 import { SheetContentSide } from "@/utils/enums"
 import { ThemeSwitcher } from "@/lib/ui/useable-components/theme-switcher"
+import { BrandMark } from "@/lib/ui/useable-components/brand-logo"
 import { ContinueToDashboardDialog } from "@/lib/ui/useable-components/continue-dashboard-dialog"
 
 export const WebappNavbar = ({ className }: { className?: string }) => {
@@ -49,13 +48,7 @@ export const WebappNavbar = ({ className }: { className?: string }) => {
             >
               <SheetHeader className="border-border shrink-0 border-b p-4">
                 <SheetTitle className="flex items-center gap-2">
-                  <Image
-                    src={TechOnLogo}
-                    alt={COMPANY_NAME}
-                    width={60}
-                    height={60}
-                    priority
-                  />
+                  <BrandMark className="size-15" title={COMPANY_NAME} />
                   <span className="truncate">{COMPANY_NAME}</span>
                 </SheetTitle>
               </SheetHeader>
@@ -88,13 +81,7 @@ export const WebappNavbar = ({ className }: { className?: string }) => {
             className="hover:bg-(--brand-secondary)/10 flex min-w-0 items-center gap-2 rounded-xl px-2 py-2 transition-colors"
             aria-label={`${COMPANY_NAME} home`}
           >
-            <Image
-              src={TechOnLogo}
-              alt={COMPANY_NAME}
-              width={52}
-              height={52}
-              priority
-            />
+            <BrandMark className="size-13" title={COMPANY_NAME} />
             <div className="min-w-0 leading-tight">
               <div className="truncate text-sm font-semibold">{COMPANY_NAME}</div>
               <div className="text-muted-foreground truncate text-xs">

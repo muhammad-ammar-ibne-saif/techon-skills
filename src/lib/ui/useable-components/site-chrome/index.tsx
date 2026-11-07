@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { MenuIcon, XIcon } from "lucide-react"
@@ -11,8 +10,7 @@ import { useCourses } from "@/lib/providers/courses"
 import { ContinueToDashboardDialog } from "@/lib/ui/useable-components/continue-dashboard-dialog"
 import { ThemeSwitcher } from "@/lib/ui/useable-components/theme-switcher"
 import { CONFIG, SITE_PHONE_DISPLAY, SITE_PHONE_TEL_HREF, SITE_WHATSAPP_URL } from "@/utils/constants"
-import TechOnLogo from "@/lib/assets/techon-skills-logo-mark.png"
-import TechOnLogoFooter from "@/lib/assets/techon-skills-logo-mark-footer.png"
+import { BrandLogo, BrandMark } from "@/lib/ui/useable-components/brand-logo"
 import { SITE_EMAIL, siteButton, siteContainer } from "./ui"
 
 const ROUTES = CONFIG.ROUTES.PUBLIC
@@ -52,7 +50,7 @@ export function SiteHeader() {
           className="shrink-0 transition-transform duration-300 hover:scale-105"
           aria-label="TechOn Skills home"
         >
-          <Image src={TechOnLogo} alt="TechOn Skills" width={48} height={48} priority className="size-12" />
+          <BrandLogo />
         </Link>
         <nav className="hidden items-center gap-6 lg:flex" aria-label="Main">
           {NAV_LINKS.map((l) => (
@@ -197,7 +195,7 @@ export function SiteFooter() {
 
         <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <Image src={TechOnLogoFooter} alt="TechOn Skills" width={40} height={40} className="size-10 shrink-0" />
+            <BrandMark className="size-10 shrink-0" title="TechOn Skills" />
             <p className="font-mono text-[10px] leading-relaxed text-white/45">
               © {new Date().getFullYear()} TechOn Skills · Cloudrika Technologies, Lahore ·{" "}
               <a href={SITE_PHONE_TEL_HREF} className="hover:text-white">

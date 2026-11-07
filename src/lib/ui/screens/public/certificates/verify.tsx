@@ -3,7 +3,7 @@
 import { useQuery } from "@apollo/client/react"
 import { Loader2Icon, ShieldCheckIcon, ShieldXIcon } from "lucide-react"
 
-import { CertificateView } from "@/lib/ui/useable-components/certificate-view"
+import { CertificateView, toCertificateViewData, type CertificateApiFields, type CertificateTemplateFields } from "@/lib/ui/useable-components/certificate-view"
 import { VERIFY_CERTIFICATE } from "@/lib/graphql"
 import { SectionLabel } from "@/lib/ui/useable-components/site-chrome/ui"
 
@@ -18,7 +18,8 @@ export const PublicCertificateVerifyScreen = ({ code }: { code: string }) => {
       message: string
       status: string
       issuedAt: string | null
-      template?: { titleLine?: string; subtitleLine?: string; footerLine?: string } | null
+      template?: CertificateTemplateFields | null
+      details?: CertificateApiFields["details"]
     } | null
   }>(VERIFY_CERTIFICATE, {
     variables: { code: code.toUpperCase() },
@@ -59,18 +60,7 @@ export const PublicCertificateVerifyScreen = ({ code }: { code: string }) => {
         </h1>
       </div>
       <CertificateView
-        data={{
-          studentName: cert.studentName,
-          courseName: cert.courseName,
-          percentage: cert.percentage,
-          grade: cert.grade,
-          message: cert.message,
-          verificationCode: cert.verificationCode,
-          status: cert.status,
-          titleLine: cert.template?.titleLine,
-          subtitleLine: cert.template?.subtitleLine,
-          footerLine: cert.template?.footerLine,
-        }}
+        data={toCertificateViewData(cert)}
         pendingBadge={false}
       />
       {cert.issuedAt && (

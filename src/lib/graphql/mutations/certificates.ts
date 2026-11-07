@@ -9,6 +9,10 @@ export const CREATE_CERTIFICATE_TEMPLATE = gql`
       subtitleLine
       bodyTemplate
       footerLine
+      directorName
+      directorTitle
+      mentorName
+      mentorTitle
       isDefault
     }
   }
@@ -23,6 +27,10 @@ export const UPDATE_CERTIFICATE_TEMPLATE = gql`
       subtitleLine
       bodyTemplate
       footerLine
+      directorName
+      directorTitle
+      mentorName
+      mentorTitle
       isDefault
     }
   }

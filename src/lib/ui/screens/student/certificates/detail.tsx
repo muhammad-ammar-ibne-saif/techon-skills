@@ -5,7 +5,7 @@ import { useQuery } from "@apollo/client/react"
 import { ArrowLeftIcon, Loader2Icon } from "lucide-react"
 
 import { Button } from "@/lib/ui/useable-components/button"
-import { CertificateView } from "@/lib/ui/useable-components/certificate-view"
+import { CertificateView, toCertificateViewData, type CertificateApiFields, type CertificateTemplateFields } from "@/lib/ui/useable-components/certificate-view"
 import { CertificateShareButtons } from "@/lib/ui/useable-components/certificate-share"
 import { GET_CERTIFICATE_BY_ID } from "@/lib/graphql"
 import { CONFIG } from "@/utils/constants"
@@ -22,11 +22,8 @@ export const StudentCertificateDetailScreen = ({ certificateId }: { certificateI
       message: string
       status: string
       issuedAt?: string | null
-      template?: {
-        titleLine?: string
-        subtitleLine?: string
-        footerLine?: string
-      } | null
+      template?: CertificateTemplateFields | null
+      details?: CertificateApiFields["details"]
     } | null
   }>(GET_CERTIFICATE_BY_ID, {
     variables: { id: certificateId },
@@ -75,18 +72,7 @@ export const StudentCertificateDetailScreen = ({ certificateId }: { certificateI
         </div>
       )}
       <CertificateView
-        data={{
-          studentName: cert.studentName,
-          courseName: cert.courseName,
-          percentage: cert.percentage,
-          grade: cert.grade,
-          message: cert.message,
-          verificationCode: cert.verificationCode,
-          status: cert.status,
-          titleLine: cert.template?.titleLine,
-          subtitleLine: cert.template?.subtitleLine,
-          footerLine: cert.template?.footerLine,
-        }}
+        data={toCertificateViewData(cert)}
         showQr={cert.status === "live"}
         pendingBadge
       />

@@ -12,7 +12,6 @@ import {
 import { cn, getImageSrc, isBackendImageUrl, logger } from "@/lib/helpers"
 import { Button } from "@/lib/ui/useable-components/button"
 import { Separator } from "@/lib/ui/useable-components/separator"
-import TechOnLogo from "@/lib/assets/techon-skills-logo-rm-bg.png"
 import { COMPANY_NAME, CONFIG } from "@/utils/constants"
 import { SidebarTrigger } from "@/lib/ui/useable-components/sidebar"
 import { ThemeSwitcher } from "@/lib/ui/useable-components/theme-switcher"
@@ -23,6 +22,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { apiService } from "@/lib/services"
 import { toast } from "react-hot-toast"
 import { LoggerLevel } from "@/utils/enums"
+import { BrandMark } from "@/lib/ui/useable-components/brand-logo"
 import { useUser } from "@/lib/providers/user"
 
 export const StudentAppbar = ({ className }: { className?: string }) => {
@@ -64,14 +64,7 @@ export const StudentAppbar = ({ className }: { className?: string }) => {
                         className="hover:bg-(--brand-secondary)/10 flex min-w-0 items-center gap-2 rounded-lg px-2 py-1.5 transition-colors"
                         aria-label={`${COMPANY_NAME} student home`}
                     >
-                        <Image
-                            src={TechOnLogo}
-                            alt={COMPANY_NAME}
-                            width={28}
-                            height={28}
-                            className="size-7"
-                            priority
-                        />
+                        <BrandMark className="size-7" title={COMPANY_NAME} />
                         <div className="min-w-0 leading-tight">
                             <div className="truncate text-sm font-semibold">{COMPANY_NAME}</div>
                             <div className="text-muted-foreground truncate text-xs">
@@ -103,13 +96,7 @@ export const StudentAppbar = ({ className }: { className?: string }) => {
                                             unoptimized={isBackendImageUrl(avatarSrc)}
                                         />
                                     ) : (
-                                        <Image
-                                            src={TechOnLogo}
-                                            alt=""
-                                            width={20}
-                                            height={20}
-                                            className="size-5"
-                                        />
+                                        <BrandMark className="size-5" />
                                     )}
                                 </span>
                                 <span className="hidden max-w-40 truncate text-sm font-medium sm:block">
@@ -145,13 +132,7 @@ export const StudentAppbar = ({ className }: { className?: string }) => {
                                                     unoptimized={isBackendImageUrl(avatarSrc)}
                                                 />
                                             ) : (
-                                                <Image
-                                                    src={TechOnLogo}
-                                                    alt=""
-                                                    width={24}
-                                                    height={24}
-                                                    className="size-6"
-                                                />
+                                                <BrandMark className="size-6" />
                                             )}
                                         </div>
                                         <div className="min-w-0 flex-1">

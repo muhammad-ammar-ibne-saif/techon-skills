@@ -1,4 +1,3 @@
-import Image from "next/image"
 import Link from "next/link"
 import {
     ArrowRightIcon,
@@ -6,13 +5,13 @@ import {
     SearchIcon,
     SparklesIcon,
 } from "lucide-react"
-import TechOnLogo from "@/lib/assets/techon-skills-logo-rm-bg.png"
 import { cn } from "@/lib/helpers"
 import { Button } from "@/lib/ui/useable-components/button"
 import { Card, CardContent } from "@/lib/ui/useable-components/card"
 import { Input } from "@/lib/ui/useable-components/input"
 import { Separator } from "@/lib/ui/useable-components/separator"
 import { COMPANY_NAME, STUDENT_COURSES_QUICK_LINKS } from "@/utils/constants"
+import { BrandMark } from "@/lib/ui/useable-components/brand-logo"
 import { IStudentCoursesHeaderProps } from "@/utils/interfaces"
 
 export const StudentCoursesHeader = ({ className, searchProps }: IStudentCoursesHeaderProps) => {
@@ -34,14 +33,7 @@ export const StudentCoursesHeader = ({ className, searchProps }: IStudentCourses
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                     <div className="bg-(--brand-primary) text-(--text-on-dark) flex size-10 items-center justify-center overflow-hidden rounded-2xl">
-                        <Image
-                            src={TechOnLogo}
-                            alt={COMPANY_NAME}
-                            width={24}
-                            height={24}
-                            className="size-6"
-                            priority
-                        />
+                        <BrandMark className="size-6" title={COMPANY_NAME} />
                     </div>
                     <div className="min-w-0">
                         <div className="truncate text-sm font-semibold">{COMPANY_NAME}</div>
