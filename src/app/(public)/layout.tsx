@@ -2,6 +2,7 @@ import { ReactNode } from "react"
 
 import { SiteFooter, SiteHeader } from "@/lib/ui/useable-components/site-chrome"
 import { SitePopup } from "@/lib/ui/useable-components/site-popup"
+import { VisitCounter } from "@/lib/ui/useable-components/visit-counter"
 
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
@@ -10,6 +11,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       <main className="site-main min-w-0 w-full flex-1">{children}</main>
       <SiteFooter />
       <SitePopup />
+      <VisitCounter />
     </div>
   )
 }

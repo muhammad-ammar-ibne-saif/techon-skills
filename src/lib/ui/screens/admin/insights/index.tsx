@@ -1,11 +1,12 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useQuery } from "@apollo/client/react"
-import { DownloadIcon, Loader2Icon, MailIcon, MessageCircleIcon, PhoneIcon } from "lucide-react"
+import { useMutation, useQuery } from "@apollo/client/react"
+import { DownloadIcon, LightbulbIcon, Loader2Icon, MailIcon, MessageCircleIcon, NotebookPenIcon, PhoneIcon } from "lucide-react"
+import toast from "react-hot-toast"
 
 import { cn } from "@/lib/helpers"
-import { GET_AT_RISK_STUDENTS, GET_INSIGHT_REPORTS } from "@/lib/graphql"
+import { GET_AT_RISK_STUDENTS, GET_INSIGHT_REPORTS, LOG_AT_RISK_FOLLOW_UP } from "@/lib/graphql"
 import { Button } from "@/lib/ui/useable-components/button"
 import { Input } from "@/lib/ui/useable-components/input"
 
@@ -27,6 +28,63 @@ type AtRiskStudent = {
   lastActivityAt: string | null
   flags: RiskFlag[]
   reasons: string[]
+  suggestedAction: string
+  lastFollowUp: FollowUp | null
+}
+
+type FollowUp = { id: string; note: string; byName: string; snoozeUntil: string | null; createdAt: string }
+
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+
+function FollowUpForm({ student, onDone }: { student: AtRiskStudent; onDone: () => void }) {
+  const [note, setNote] = useState("")
+  const [snooze, setSnooze] = useState(7)
+  const [save, { loading }] = useMutation(LOG_AT_RISK_FOLLOW_UP, {
+    refetchQueries: [GET_AT_RISK_STUDENTS],
+    onCompleted: () => {
+      toast.success("Follow-up saved")
+      onDone()
+    },
+    onError: (e) => toast.error(e.message),
+  })
+  return (
+    <form
+      className="bg-muted/40 mt-3 space-y-2 rounded-lg p-3"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (!note.trim()) return
+        save({ variables: { userId: student.userId, courseId: student.courseId, note: note.trim(), snoozeDays: snooze } })
+      }}
+    >
+      <textarea
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        maxLength={1000}
+        rows={2}
+        placeholder="What happened? e.g. Called, says they were ill, will catch up on recordings this week."
+        className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
+        aria-label="Follow-up note"
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="text-sm">
+          Don&apos;t alert again for{" "}
+          <select className={selectClass} value={snooze} onChange={(e) => setSnooze(Number(e.target.value))}>
+            <option value={0}>no pause</option>
+            <option value={3}>3 days</option>
+            <option value={7}>7 days</option>
+            <option value={14}>14 days</option>
+            <option value={30}>30 days</option>
+          </select>
+        </label>
+        <Button type="submit" size="sm" disabled={loading || !note.trim()}>
+          {loading && <Loader2Icon className="size-4 animate-spin" />} Save
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onDone}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  )
 }
 
 const FLAG_LABEL: Record<RiskFlag, string> = {
@@ -85,12 +143,16 @@ export function AdminAtRiskScreen() {
   const [course, setCourse] = useState("")
   const [flag, setFlag] = useState<RiskFlag | "">("")
   const [search, setSearch] = useState("")
+  const [hideSnoozed, setHideSnoozed] = useState(false)
+  const [logging, setLogging] = useState<string | null>(null)
+  const [now] = useState(() => Date.now())
   const all = useMemo(() => data?.atRiskStudents ?? [], [data])
   const courses = useMemo(() => [...new Map(all.map((r) => [r.courseId, r.courseTitle])).entries()], [all])
   const rows = all.filter(
     (r) =>
       (!course || r.courseId === course) &&
       (!flag || r.flags.includes(flag)) &&
+      (!hideSnoozed || !r.lastFollowUp?.snoozeUntil || new Date(r.lastFollowUp.snoozeUntil).getTime() < now) &&
       (!search || `${r.fullName} ${r.email} ${r.phoneNumber} ${r.batchName}`.toLowerCase().includes(search.toLowerCase()))
   )
   const flagCounts = Object.fromEntries((Object.keys(FLAG_LABEL) as RiskFlag[]).map((f) => [f, all.filter((r) => r.flags.includes(f)).length]))
@@ -106,8 +168,17 @@ export function AdminAtRiskScreen() {
           disabled={!rows.length}
           onClick={() =>
             downloadCsv("students-to-follow-up.csv", [
-              ["Name", "Email", "Phone", "Course", "Batch", "Reasons"],
-              ...rows.map((r) => [r.fullName, r.email, r.phoneNumber, r.courseTitle, r.batchName, r.reasons.join("; ")]),
+              ["Name", "Email", "Phone", "Course", "Batch", "Reasons", "Suggested next step", "Last follow-up"],
+              ...rows.map((r) => [
+                r.fullName,
+                r.email,
+                r.phoneNumber,
+                r.courseTitle,
+                r.batchName,
+                r.reasons.join("; "),
+                r.suggestedAction,
+                r.lastFollowUp ? `${shortDate(r.lastFollowUp.createdAt)} ${r.lastFollowUp.byName}: ${r.lastFollowUp.note}` : "",
+              ]),
             ])
           }
         >
@@ -125,6 +196,9 @@ export function AdminAtRiskScreen() {
             </option>
           ))}
         </select>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={hideSnoozed} onChange={(e) => setHideSnoozed(e.target.checked)} /> Hide paused
+        </label>
         <div className="flex flex-wrap gap-2">
           {(Object.keys(FLAG_LABEL) as RiskFlag[]).map((f) => (
             <button
@@ -179,6 +253,22 @@ export function AdminAtRiskScreen() {
                     <li key={x}>{x}</li>
                   ))}
                 </ul>
+                {r.suggestedAction && (
+                  <p className="mt-2 flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-sm">
+                    <LightbulbIcon className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                    <span>
+                      <span className="font-medium">Next step:</span> {r.suggestedAction}
+                    </span>
+                  </p>
+                )}
+                {r.lastFollowUp && (
+                  <p className="text-muted-foreground mt-2 text-sm">
+                    Last follow-up {shortDate(r.lastFollowUp.createdAt)} by {r.lastFollowUp.byName}: “{r.lastFollowUp.note}”
+                    {r.lastFollowUp.snoozeUntil && new Date(r.lastFollowUp.snoozeUntil).getTime() > now && (
+                      <span> · alerts paused until {shortDate(r.lastFollowUp.snoozeUntil)}</span>
+                    )}
+                  </p>
+                )}
                 <div className="text-muted-foreground mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
                   {r.phoneNumber && (
                     <a href={`tel:${r.phoneNumber}`} className="hover:text-foreground inline-flex items-center gap-1">
@@ -193,7 +283,17 @@ export function AdminAtRiskScreen() {
                   <a href={`mailto:${r.email}`} className="hover:text-foreground inline-flex items-center gap-1">
                     <MailIcon className="size-4" /> {r.email}
                   </a>
+                  {logging !== `${r.userId}:${r.courseId}` && (
+                    <button
+                      type="button"
+                      onClick={() => setLogging(`${r.userId}:${r.courseId}`)}
+                      className="hover:text-foreground inline-flex items-center gap-1 font-medium"
+                    >
+                      <NotebookPenIcon className="size-4" /> Log follow-up
+                    </button>
+                  )}
                 </div>
+                {logging === `${r.userId}:${r.courseId}` && <FollowUpForm student={r} onDone={() => setLogging(null)} />}
               </div>
             )
           })}

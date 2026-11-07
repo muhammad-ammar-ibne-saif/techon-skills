@@ -40,11 +40,6 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
       {
-        protocol: "https",
-        hostname: "api.qrserver.com",
-        pathname: "/**",
-      },
-      {
         // Path-style S3 URLs for any bucket in Mumbai (https://s3.ap-south-1.amazonaws.com/<bucket>/...)
         protocol: "https",
         hostname: "s3.ap-south-1.amazonaws.com",

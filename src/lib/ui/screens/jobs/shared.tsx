@@ -17,7 +17,7 @@ import { CONFIG } from "@/utils/constants"
 
 export type JobType = "FULL_TIME" | "PART_TIME" | "INTERNSHIP" | "CONTRACT"
 export type WorkMode = "ONSITE" | "REMOTE" | "HYBRID"
-export type ApplicationStatus = "SUBMITTED" | "VIEWED" | "SHORTLISTED" | "REJECTED" | "HIRED"
+export type ApplicationStatus = "SUBMITTED" | "VIEWED" | "SHORTLISTED" | "INTERVIEW" | "OFFER" | "REJECTED" | "HIRED"
 
 export type CompanyLite = { id: string; name: string; slug: string; logo: string; isPartner: boolean }
 
@@ -47,7 +47,7 @@ export type Company = CompanyLite & {
 
 export type Job = {
   id: string
-  source: "COMPANY" | "ADMIN" | "FEED"
+  source: "COMPANY" | "ADMIN" | "FEED" | "ALUMNI"
   companyName: string
   companyLogo: string
   fromPartner: boolean
@@ -70,6 +70,17 @@ export type Job = {
   company: CompanyLite | null
   applicationsCount?: number | null
   myApplication?: { id: string; status: ApplicationStatus; createdAt: string } | null
+  awaitingReview?: boolean
+  referrer?: { fullName: string; portfolioSlug: string | null } | null
+  reviewNote?: string | null
+  fit?: JobFit | null
+}
+
+export type JobFit = {
+  matched: string[]
+  missing: string[]
+  total: number
+  courses?: { id: string; title: string; slug: string; teaches: string[]; enrolled: boolean }[]
 }
 
 export type Applicant = {
@@ -90,6 +101,7 @@ export type Application = {
   projects?: { title: string; url: string; reason: string }[]
   status: ApplicationStatus
   statusChangedAt: string | null
+  notesCount?: number
   createdAt: string
   student?: Applicant | null
   job?: { id: string; title: string; companyName: string; companyLogo?: string; status?: string; company?: { slug: string } | null } | null
@@ -108,6 +120,8 @@ export const APPLICATION_STATUS_LABEL: Record<ApplicationStatus, string> = {
   SUBMITTED: "Sent",
   VIEWED: "Viewed",
   SHORTLISTED: "Shortlisted",
+  INTERVIEW: "Interview",
+  OFFER: "Offer",
   REJECTED: "Not selected",
   HIRED: "Hired",
 }
@@ -115,6 +129,8 @@ export const APPLICATION_STATUS_CLASS: Record<ApplicationStatus, string> = {
   SUBMITTED: "bg-sky-500/15 text-sky-700 dark:text-sky-400",
   VIEWED: "bg-muted text-muted-foreground",
   SHORTLISTED: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  INTERVIEW: "bg-violet-500/15 text-violet-700 dark:text-violet-400",
+  OFFER: "bg-teal-500/15 text-teal-700 dark:text-teal-400",
   REJECTED: "bg-rose-500/15 text-rose-700 dark:text-rose-400",
   HIRED: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
 }
@@ -532,6 +548,7 @@ export function JobForm({
   initial,
   saving,
   companies,
+  alumni,
   onSubmit,
   onCancel,
 }: {
@@ -539,6 +556,8 @@ export function JobForm({
   saving: boolean
   /** Admins pick a company (or type an outside one); employers post for their own. */
   companies?: { id: string; name: string }[]
+  /** Graduates posting a job at their workplace: type the company, apply here or on its site. */
+  alumni?: boolean
   onSubmit: (values: JobFormValues) => void
   onCancel: () => void
 }) {
@@ -554,6 +573,11 @@ export function JobForm({
         onSubmit(outside ? { ...form, applyMode: "EXTERNAL" } : form)
       }}
     >
+      {alumni && (
+        <Field label="Company" hint="Where the job is. Staff check it before it goes live.">
+          <Input value={form.companyName} onChange={set("companyName")} required minLength={2} maxLength={120} />
+        </Field>
+      )}
       {companies && (
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Company">
@@ -629,7 +653,7 @@ export function JobForm({
           <Field label="How students apply">
             <select value={form.applyMode} onChange={set("applyMode")} className={selectClass}>
               <option value="PORTAL">On TechOn Skills (you get their portfolio by email)</option>
-              <option value="EXTERNAL">On our own site</option>
+              <option value="EXTERNAL">{alumni ? "On the company's site" : "On our own site"}</option>
             </select>
           </Field>
         )}

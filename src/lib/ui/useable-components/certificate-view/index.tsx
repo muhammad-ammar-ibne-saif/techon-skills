@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import { cn, getImageSrc } from "@/lib/helpers"
+import { QrCode } from "@/lib/ui/useable-components/qr-code"
 
 export type CertificateViewData = {
   studentName: string
@@ -39,7 +40,6 @@ export function CertificateView({
 }) {
   const signatureUrl = getImageSrc("signatures/ceo.png")
   const verifyUrl = buildVerifyUrl(data.verificationCode, data.verifyBaseUrl)
-  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(verifyUrl)}`
   const isPending = data.status === "pending"
 
   return (
@@ -100,7 +100,7 @@ export function CertificateView({
 
           {showQr && (
             <div className="flex flex-col items-center gap-1">
-              <Image src={qrSrc} alt="Verification QR code" width={88} height={88} className="rounded-md bg-white p-1" unoptimized />
+              <QrCode value={verifyUrl} size={88} label="Verification QR code" className="rounded-md bg-white p-1" />
               <span className="font-mono text-[10px] text-white/60">{data.verificationCode}</span>
             </div>
           )}

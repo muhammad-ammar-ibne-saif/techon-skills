@@ -48,6 +48,11 @@ export const GET_MY_PUBLISHED_COURSE_CONTENTS = gql`
   query GetMyPublishedCourseContents {
     getMyPublishedCourseContents {
       id
+      myFeedback {
+        rating
+        comment
+        updatedAt
+      }
       courseId
       title
       description

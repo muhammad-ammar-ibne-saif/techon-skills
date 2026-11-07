@@ -18,6 +18,8 @@ export const GET_AT_RISK_STUDENTS = gql`
             lastActivityAt
             flags
             reasons
+            suggestedAction
+            lastFollowUp { id note byName snoozeUntil createdAt }
         }
     }
 `;
