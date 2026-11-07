@@ -86,6 +86,8 @@ export type Application = {
   coverNote: string
   portfolioUrl: string
   cvUrl: string
+  tailoredCv?: boolean
+  projects?: { title: string; url: string; reason: string }[]
   status: ApplicationStatus
   statusChangedAt: string | null
   createdAt: string

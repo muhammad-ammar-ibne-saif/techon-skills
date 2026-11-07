@@ -85,7 +85,7 @@ const blankProject = { title: "", description: "", url: "", repoUrl: "", image: 
 const blankExperience: Experience = { role: "", company: "", start: "", end: "", description: "" }
 const blankEducation: Education = { school: "", degree: "", start: "", end: "" }
 
-function Section({ title, hint, children, onAdd, addLabel }: { title: string; hint?: string; children: ReactNode; onAdd?: () => void; addLabel?: string }) {
+export function Section({ title, hint, children, onAdd, addLabel }: { title: string; hint?: string; children: ReactNode; onAdd?: () => void; addLabel?: string }) {
   return (
     <section className="bg-card space-y-4 rounded-xl border p-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -104,7 +104,7 @@ function Section({ title, hint, children, onAdd, addLabel }: { title: string; hi
   )
 }
 
-function RemoveButton({ onClick }: { onClick: () => void }) {
+export function RemoveButton({ onClick }: { onClick: () => void }) {
   return (
     <Button type="button" size="sm" variant="ghost" aria-label="Remove" onClick={onClick}>
       <Trash2Icon className="size-4" />

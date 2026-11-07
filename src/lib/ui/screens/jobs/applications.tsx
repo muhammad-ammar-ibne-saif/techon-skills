@@ -92,10 +92,29 @@ function ApplicationRow({ app, showJob }: { app: Application; showJob: boolean }
         )}
         {app.cvUrl && (
           <a href={app.cvUrl} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 font-medium">
-            <FileTextIcon className="size-4" /> CV
+            <FileTextIcon className="size-4" /> {app.tailoredCv ? "CV for this job" : "CV"}
           </a>
         )}
       </div>
+      {app.projects && app.projects.length > 0 && (
+        <div className="mt-3 text-sm">
+          <p className="text-muted-foreground mb-1 text-xs font-medium">Projects for this role</p>
+          <ul className="space-y-1">
+            {app.projects.map((p, i) => (
+              <li key={i}>
+                {p.url ? (
+                  <a href={p.url} target="_blank" rel="noreferrer noopener nofollow" className="font-medium text-(--site-accent)">
+                    {p.title}
+                  </a>
+                ) : (
+                  <span className="font-medium">{p.title}</span>
+                )}
+                {p.reason && <span className="text-muted-foreground"> – {p.reason}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }

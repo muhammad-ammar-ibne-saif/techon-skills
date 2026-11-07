@@ -151,6 +151,7 @@ export const CONFIG = {
             FEES: "/student/fees",
             REFER: "/student/refer",
             PORTFOLIO: "/student/portfolio",
+            RESUME: "/student/resume",
             JOBS: "/student/jobs",
             EVENTS: "/student/events",
             ARTICLES: "/student/articles",

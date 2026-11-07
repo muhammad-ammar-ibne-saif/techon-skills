@@ -63,6 +63,8 @@ export const APPLICATION_FIELDS = `
     coverNote
     portfolioUrl
     cvUrl
+    tailoredCv
+    projects { title url reason }
     status
     statusChangedAt
     createdAt

@@ -38,8 +38,8 @@ export const DELETE_JOB = gql`
 `;
 
 export const APPLY_TO_JOB = gql`
-    mutation ApplyToJob($jobId: ID!, $coverNote: String) {
-        applyToJob(jobId: $jobId, coverNote: $coverNote) { ${APPLICATION_FIELDS} }
+    mutation ApplyToJob($jobId: ID!, $coverNote: String, $resumeId: ID) {
+        applyToJob(jobId: $jobId, coverNote: $coverNote, resumeId: $resumeId) { ${APPLICATION_FIELDS} }
     }
 `;
 

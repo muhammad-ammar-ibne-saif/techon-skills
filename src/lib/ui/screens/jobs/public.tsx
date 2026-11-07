@@ -33,6 +33,7 @@ import { PageIntro, SectionLabel, siteButton, siteContainer } from "@/lib/ui/use
 import { Textarea } from "@/lib/ui/useable-components/textarea"
 import { CONFIG } from "@/utils/constants"
 import { UserRole } from "@/utils/enums/user"
+import { TailorForExternalJob, TailoredCvChoice } from "../resume/apply"
 import {
   COMPANY_SIZES,
   CompanyLogo,
@@ -222,6 +223,7 @@ function ApplyBox({ job }: { job: Job }) {
           Apply on {job.feedSource ? job.feedSource : "the company's site"} <ExternalLinkIcon className="size-4" />
         </a>
         <p className="text-muted-foreground text-xs">You&apos;ll apply on another website. Add your portfolio link to your application there.</p>
+        {role === UserRole.STUDENT && <TailorForExternalJob jobId={job.id} buttonClass={siteButton.outline} />}
       </div>
     )
   }
@@ -256,29 +258,27 @@ function ApplyBox({ job }: { job: Job }) {
   }
 
   return (
-    <form
-      className="space-y-3"
-      onSubmit={async (e) => {
-        e.preventDefault()
-        try {
-          await apply({ variables: { jobId: job.id, coverNote: note.trim() || null } })
-          toast.success("Application sent. The company gets your portfolio by email.")
-        } catch (err) {
-          toast.error((err as Error).message || "Couldn't apply")
-        }
-      }}
-    >
+    <div className="space-y-3">
       <Field label="Note to the company" hint="Optional. Why you'd be a good fit.">
         <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={4} maxLength={2000} />
       </Field>
+      <TailoredCvChoice
+        jobId={job.id}
+        sending={loading}
+        buttonClass={siteButton.primary}
+        onApply={async (resumeId) => {
+          try {
+            await apply({ variables: { jobId: job.id, coverNote: note.trim() || null, resumeId } })
+            toast.success(resumeId ? "Application sent with your CV for this job." : "Application sent. The company gets your portfolio by email.")
+          } catch (err) {
+            toast.error((err as Error).message || "Couldn't apply")
+          }
+        }}
+      />
       <p className="text-muted-foreground text-xs">
-        Your <Link href={CONFIG.ROUTES.STUDENT.PORTFOLIO} className="underline">portfolio</Link> and CV link go with your application, so
-        make sure they&apos;re up to date.
+        Your <Link href={CONFIG.ROUTES.STUDENT.PORTFOLIO} className="underline">portfolio</Link> link always goes with your application.
       </p>
-      <button type="submit" className={cn(siteButton.primary, "w-full")} disabled={loading}>
-        {loading && <Loader2Icon className="size-4 animate-spin" />} Apply with my portfolio
-      </button>
-    </form>
+    </div>
   )
 }
 
@@ -532,7 +532,7 @@ export function PortfolioView({ p }: { p: Portfolio }) {
           <h2 className="mb-3 text-lg font-semibold">Projects</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             {p.projects.map((x, i) => (
-              <div key={i} className="bg-card overflow-hidden rounded-xl border">
+              <div key={i} id={`project-${i + 1}`} className="bg-card scroll-mt-24 overflow-hidden rounded-xl border target:ring-2 target:ring-(--site-accent)">
                 {x.image && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={x.image} alt="" className="aspect-video w-full object-cover" />

@@ -29,3 +29,4 @@ export * from "./promotions";
 export * from "./jobs";
 export * from "./portfolio";
 export * from "./insights";
+export * from "./resume";
