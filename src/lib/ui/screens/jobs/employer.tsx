@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, type ReactNode } from "react"
-import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useMutation, useQuery } from "@apollo/client/react"
@@ -22,7 +21,6 @@ import {
 } from "lucide-react"
 import toast from "react-hot-toast"
 
-import TechOnLogo from "@/lib/assets/techon-skills-logo-mark.png"
 import { cn } from "@/lib/helpers"
 import {
   CREATE_JOB,
@@ -42,6 +40,7 @@ import { ThemeSwitcher } from "@/lib/ui/useable-components/theme-switcher"
 import { CONFIG } from "@/utils/constants"
 import { InterviewDialog } from "../careers/interview"
 import { ApplicationsList } from "./applications"
+import { BrandMark } from "@/lib/ui/useable-components/brand-logo"
 import {
   CAREERS_PROVIDER_LABEL,
   CompanyForm,
@@ -95,7 +94,7 @@ export function EmployerLayout({ children }: { children: ReactNode }) {
       <header className="bg-background/90 sticky top-0 z-40 border-b backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-4 px-4 sm:px-6">
           <Link href={CONFIG.ROUTES.PUBLIC.HOME} aria-label="TechOn Skills home" className="shrink-0">
-            <Image src={TechOnLogo} alt="TechOn Skills" width={40} height={40} className="size-10" />
+            <BrandMark className="size-10" title="TechOn Skills" />
           </Link>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">Employer dashboard</p>

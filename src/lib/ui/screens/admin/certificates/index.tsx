@@ -9,7 +9,7 @@ import { Button } from "@/lib/ui/useable-components/button"
 import { Card, CardContent } from "@/lib/ui/useable-components/card"
 import { Input } from "@/lib/ui/useable-components/input"
 import { Textarea } from "@/lib/ui/useable-components/textarea"
-import { CertificateView } from "@/lib/ui/useable-components/certificate-view"
+import { CertificateView, toCertificateViewData, type CertificateApiFields, type CertificateTemplateFields } from "@/lib/ui/useable-components/certificate-view"
 import {
   CREATE_CERTIFICATE_TEMPLATE,
   DELETE_CERTIFICATE,
@@ -33,6 +33,10 @@ type TemplateRow = {
   subtitleLine: string
   bodyTemplate: string
   footerLine: string
+  directorName: string
+  directorTitle: string
+  mentorName: string
+  mentorTitle: string
   isDefault: boolean
 }
 
@@ -47,7 +51,8 @@ type CertRow = {
   status: string
   issuedAt: string | null
   createdAt: string
-  template?: { titleLine?: string; subtitleLine?: string; footerLine?: string } | null
+  template?: CertificateTemplateFields | null
+      details?: CertificateApiFields["details"]
 }
 
 const emptyTemplate = {
@@ -57,6 +62,10 @@ const emptyTemplate = {
   bodyTemplate:
     "{{studentName}} has successfully completed {{courseName}} with an overall score of {{percentage}}% (Grade {{grade}}).",
   footerLine: "TechOn Skills",
+  directorName: "",
+  directorTitle: "Director, TechOn Skills",
+  mentorName: "",
+  mentorTitle: "Lead Mentor",
   isDefault: false,
 }
 
@@ -150,6 +159,10 @@ export const AdminCertificatesScreen = () => {
       subtitleLine: t.subtitleLine,
       bodyTemplate: t.bodyTemplate,
       footerLine: t.footerLine,
+      directorName: t.directorName ?? "",
+      directorTitle: t.directorTitle ?? "Director, TechOn Skills",
+      mentorName: t.mentorName ?? "",
+      mentorTitle: t.mentorTitle ?? "Lead Mentor",
       isDefault: t.isDefault,
     })
     setTab("templates")
@@ -246,6 +259,39 @@ export const AdminCertificatesScreen = () => {
                 value={templateForm.footerLine}
                 onChange={(e) => setTemplateForm((f) => ({ ...f, footerLine: e.target.value }))}
               />
+              <p className="text-muted-foreground pt-1 text-xs">
+                Signatures on the certificate. The director&apos;s signature image comes from the uploaded CEO signature.
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Input
+                  placeholder="Director name"
+                  aria-label="Director name"
+                  maxLength={80}
+                  value={templateForm.directorName}
+                  onChange={(e) => setTemplateForm((f) => ({ ...f, directorName: e.target.value }))}
+                />
+                <Input
+                  placeholder="Director title"
+                  aria-label="Director title"
+                  maxLength={80}
+                  value={templateForm.directorTitle}
+                  onChange={(e) => setTemplateForm((f) => ({ ...f, directorTitle: e.target.value }))}
+                />
+                <Input
+                  placeholder="Mentor name"
+                  aria-label="Mentor name"
+                  maxLength={80}
+                  value={templateForm.mentorName}
+                  onChange={(e) => setTemplateForm((f) => ({ ...f, mentorName: e.target.value }))}
+                />
+                <Input
+                  placeholder="Mentor title"
+                  aria-label="Mentor title"
+                  maxLength={80}
+                  value={templateForm.mentorTitle}
+                  onChange={(e) => setTemplateForm((f) => ({ ...f, mentorTitle: e.target.value }))}
+                />
+              </div>
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -472,18 +518,7 @@ export const AdminCertificatesScreen = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setPreviewCert(null)}>
           <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <CertificateView
-              data={{
-                studentName: previewCert.studentName,
-                courseName: previewCert.courseName,
-                percentage: previewCert.percentage,
-                grade: previewCert.grade,
-                message: previewCert.message,
-                verificationCode: previewCert.verificationCode,
-                status: previewCert.status,
-                titleLine: previewCert.template?.titleLine,
-                subtitleLine: previewCert.template?.subtitleLine,
-                footerLine: previewCert.template?.footerLine,
-              }}
+              data={toCertificateViewData(previewCert)}
               showQr={previewCert.status === "live"}
             />
             <div className="mt-4 text-center">

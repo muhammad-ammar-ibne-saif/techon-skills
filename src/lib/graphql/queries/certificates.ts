@@ -9,6 +9,10 @@ export const GET_CERTIFICATE_TEMPLATES = gql`
       subtitleLine
       bodyTemplate
       footerLine
+      directorName
+      directorTitle
+      mentorName
+      mentorTitle
       isDefault
       createdAt
       updatedAt
@@ -31,6 +35,7 @@ export const GET_CERTIFICATES_ADMIN = gql`
       message
       status
       issuedAt
+      details { durationMonths batchName projectsGraded }
       createdAt
       template {
         id
@@ -38,6 +43,10 @@ export const GET_CERTIFICATES_ADMIN = gql`
         titleLine
         subtitleLine
         footerLine
+        directorName
+        directorTitle
+        mentorName
+        mentorTitle
       }
     }
   }
@@ -59,6 +68,10 @@ export const GET_MY_CERTIFICATES = gql`
         id
         titleLine
         footerLine
+        directorName
+        directorTitle
+        mentorName
+        mentorTitle
       }
     }
   }
@@ -76,6 +89,7 @@ export const GET_CERTIFICATE_BY_ID = gql`
       message
       status
       issuedAt
+      details { durationMonths batchName projectsGraded }
       createdAt
       template {
         id
@@ -83,6 +97,10 @@ export const GET_CERTIFICATE_BY_ID = gql`
         titleLine
         subtitleLine
         footerLine
+        directorName
+        directorTitle
+        mentorName
+        mentorTitle
       }
     }
   }
@@ -100,10 +118,15 @@ export const VERIFY_CERTIFICATE = gql`
       message
       status
       issuedAt
+      details { durationMonths batchName projectsGraded }
       template {
         titleLine
         subtitleLine
         footerLine
+        directorName
+        directorTitle
+        mentorName
+        mentorTitle
       }
     }
   }
