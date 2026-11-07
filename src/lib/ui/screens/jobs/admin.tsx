@@ -29,6 +29,7 @@ import { ConfirmDialog } from "@/lib/ui/useable-components/confirm-dialog"
 import { ContentAreaLoader } from "@/lib/ui/useable-components/content-area-loader"
 import { Input } from "@/lib/ui/useable-components/input"
 import { Textarea } from "@/lib/ui/useable-components/textarea"
+import { AlumniReviewQueue } from "../careers/admin"
 import { ApplicationsList } from "./applications"
 import { CareersSyncCard } from "./employer"
 import {
@@ -385,6 +386,7 @@ function JobsTab() {
           <option value="COMPANY">Posted by companies</option>
           <option value="ADMIN">Posted by admins</option>
           <option value="FEED">Imported</option>
+          <option value="ALUMNI">Posted by graduates</option>
         </select>
         <select aria-label="Status" className={`${selectClass} w-auto`} value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="OPEN">Open</option>
@@ -395,6 +397,7 @@ function JobsTab() {
           <PlusIcon className="size-4" /> Post a job
         </Button>
       </div>
+      <AlumniReviewQueue onChange={() => void refetch()} />
       {loading && !data ? (
         <ContentAreaLoader />
       ) : !jobs.length ? (
@@ -409,10 +412,16 @@ function JobsTab() {
               actions={
                 <>
                   <span className="text-muted-foreground mr-auto text-sm">
-                    {j.source === "FEED" ? "Imported" : j.source === "ADMIN" ? "Posted by admin" : "Posted by the company"}
+                    {j.source === "FEED"
+                      ? "Imported"
+                      : j.source === "ADMIN"
+                        ? "Posted by admin"
+                        : j.source === "ALUMNI"
+                          ? `Posted by ${j.referrer?.fullName ?? "a graduate"}${j.awaitingReview ? " · waiting for approval" : ""}`
+                          : "Posted by the company"}
                     {j.applyMode === "PORTAL" ? ` · ${j.applicationsCount ?? 0} applicants` : ""}
                   </span>
-                  {j.source !== "FEED" && (
+                  {j.source !== "FEED" && j.source !== "ALUMNI" && (
                     <Button size="sm" variant="outline" onClick={() => setEditing(j)}>
                       <PencilIcon className="size-4" /> Edit
                     </Button>

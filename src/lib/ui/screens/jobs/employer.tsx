@@ -5,7 +5,21 @@ import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useMutation, useQuery } from "@apollo/client/react"
-import { BriefcaseIcon, Building2Icon, LayoutDashboardIcon, LogOutIcon, PencilIcon, PlusIcon, RefreshCwIcon, UsersIcon } from "lucide-react"
+import {
+  BookmarkIcon,
+  BriefcaseIcon,
+  Building2Icon,
+  CalendarDaysIcon,
+  KanbanIcon,
+  LayoutDashboardIcon,
+  LightbulbIcon,
+  LogOutIcon,
+  PencilIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  SearchIcon,
+  UsersIcon,
+} from "lucide-react"
 import toast from "react-hot-toast"
 
 import TechOnLogo from "@/lib/assets/techon-skills-logo-mark.png"
@@ -26,6 +40,7 @@ import { Button } from "@/lib/ui/useable-components/button"
 import { ContentAreaLoader } from "@/lib/ui/useable-components/content-area-loader"
 import { ThemeSwitcher } from "@/lib/ui/useable-components/theme-switcher"
 import { CONFIG } from "@/utils/constants"
+import { InterviewDialog } from "../careers/interview"
 import { ApplicationsList } from "./applications"
 import {
   CAREERS_PROVIDER_LABEL,
@@ -51,7 +66,12 @@ const ROUTES = CONFIG.ROUTES.EMPLOYER
 const TABS = [
   { label: "Overview", href: ROUTES.DASHBOARD, icon: LayoutDashboardIcon },
   { label: "Jobs", href: ROUTES.JOBS, icon: BriefcaseIcon },
+  { label: "Pipeline", href: ROUTES.PIPELINE, icon: KanbanIcon },
   { label: "Applicants", href: ROUTES.APPLICATIONS, icon: UsersIcon },
+  { label: "Find talent", href: ROUTES.CANDIDATES, icon: SearchIcon },
+  { label: "Shortlist", href: ROUTES.SHORTLIST, icon: BookmarkIcon },
+  { label: "Interviews", href: ROUTES.INTERVIEWS, icon: CalendarDaysIcon },
+  { label: "Projects", href: ROUTES.PROJECTS, icon: LightbulbIcon },
   { label: "Company profile", href: ROUTES.COMPANY, icon: Building2Icon },
 ]
 
@@ -110,12 +130,12 @@ export function EmployerLayout({ children }: { children: ReactNode }) {
   )
 }
 
-function useMyCompany() {
+export function useMyCompany() {
   const { data, loading, error } = useQuery<{ myCompany: Company }>(GET_MY_COMPANY, { fetchPolicy: "cache-and-network" })
   return { company: data?.myCompany ?? null, loading: loading && !data, error }
 }
 
-function PendingNotice({ company }: { company: Company }) {
+export function PendingNotice({ company }: { company: Company }) {
   if (company.status === "APPROVED") return null
   return (
     <div
@@ -365,6 +385,7 @@ export function EmployerApplicationsScreen({ initialJobId = "" }: { initialJobId
   const { data: jobsData } = useQuery<{ myCompanyJobs: Job[] }>(GET_MY_COMPANY_JOBS, { skip: company?.status !== "APPROVED" })
   const portalJobs = (jobsData?.myCompanyJobs ?? []).filter((j) => j.applyMode === "PORTAL" && j.source !== "FEED")
   const [picked, setPicked] = useState(initialJobId)
+  const [scheduling, setScheduling] = useState<Application | null>(null)
   const jobId = picked || portalJobs[0]?.id || ""
   const { data, loading: appsLoading } = useQuery<{ jobApplications: Application[] }>(GET_JOB_APPLICATIONS, {
     variables: { jobId },
@@ -395,8 +416,12 @@ export function EmployerApplicationsScreen({ initialJobId = "" }: { initialJobId
       ) : appsLoading && !data ? (
         <ContentAreaLoader />
       ) : (
-        <ApplicationsList applications={data?.jobApplications ?? []} empty="No one has applied for this job yet." />
+        <ApplicationsList applications={data?.jobApplications ?? []} empty="No one has applied for this job yet." onSchedule={setScheduling} />
       )}
+      <InterviewDialog
+        target={scheduling ? { kind: "application", applicationId: scheduling.id, studentName: scheduling.student?.fullName || "the student" } : null}
+        onClose={() => setScheduling(null)}
+      />
     </div>
   )
 }

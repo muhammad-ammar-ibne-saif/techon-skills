@@ -398,25 +398,12 @@ export function StudentPortfolioScreen() {
 
 /* ------------------------------------------------------------------ my applications */
 
-export function StudentJobsScreen() {
+/** The student's applications (the Applications tab of the jobs hub). */
+export function MyApplicationsList() {
   const { data, loading } = useQuery<{ myJobApplications: Application[] }>(GET_MY_JOB_APPLICATIONS, { fetchPolicy: "cache-and-network" })
   const apps = data?.myJobApplications ?? []
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Jobs & applications</h1>
-          <p className="text-muted-foreground text-sm">Apply with your portfolio and follow each application here.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline">
-            <Link href={CONFIG.ROUTES.STUDENT.PORTFOLIO}>Edit my portfolio</Link>
-          </Button>
-          <Button asChild>
-            <Link href={CONFIG.ROUTES.PUBLIC.JOBS}>Browse jobs</Link>
-          </Button>
-        </div>
-      </div>
+    <div>
       {loading && !data ? (
         <ContentAreaLoader />
       ) : !apps.length ? (

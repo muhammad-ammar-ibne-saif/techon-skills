@@ -55,6 +55,8 @@ export const JOB_FIELDS = `
     deadline
     postedAt
     feedSource
+    awaitingReview
+    referrer { fullName portfolioSlug }
     company { id name slug logo isPartner }
 `;
 
@@ -84,6 +86,7 @@ export const GET_JOB = gql`
         job(id: $id) {
             ${JOB_FIELDS}
             myApplication { id status createdAt }
+            fit { matched missing total courses { id title slug teaches enrolled } }
         }
     }
 `;

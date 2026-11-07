@@ -25,3 +25,5 @@ export * from "./promotions";
 export * from "./jobs";
 export * from "./portfolio";
 export * from "./resume";
+export * from "./careers";
+export * from "./growth";

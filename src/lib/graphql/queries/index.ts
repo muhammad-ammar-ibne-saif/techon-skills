@@ -30,3 +30,5 @@ export * from "./jobs";
 export * from "./portfolio";
 export * from "./insights";
 export * from "./resume";
+export * from "./careers";
+export * from "./growth";

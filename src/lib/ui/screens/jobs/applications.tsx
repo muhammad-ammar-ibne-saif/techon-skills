@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useMutation } from "@apollo/client/react"
-import { ExternalLinkIcon, FileTextIcon, MailIcon, PhoneIcon } from "lucide-react"
+import { CalendarPlusIcon, ExternalLinkIcon, FileTextIcon, MailIcon, PhoneIcon } from "lucide-react"
 import toast from "react-hot-toast"
 
 import { getImageSrc } from "@/lib/helpers/image"
@@ -18,16 +18,18 @@ import {
   type ApplicationStatus,
 } from "./shared"
 
-const STATUSES: ApplicationStatus[] = ["SUBMITTED", "VIEWED", "SHORTLISTED", "REJECTED", "HIRED"]
+const STATUSES: ApplicationStatus[] = ["SUBMITTED", "VIEWED", "SHORTLISTED", "INTERVIEW", "OFFER", "REJECTED", "HIRED"]
 
-function ApplicationRow({ app, showJob }: { app: Application; showJob: boolean }) {
+type OnSchedule = (app: Application) => void
+
+function ApplicationRow({ app, showJob, onSchedule }: { app: Application; showJob: boolean; onSchedule?: OnSchedule }) {
   const [setStatus, { loading }] = useMutation(SET_APPLICATION_STATUS)
   const s = app.student
   const avatar = getImageSrc(s?.profilePicture)
   const change = async (status: ApplicationStatus) => {
     try {
       await setStatus({ variables: { id: app.id, status } })
-      toast.success(status === "SHORTLISTED" || status === "HIRED" ? "Updated. The student was emailed." : "Updated")
+      toast.success(["SHORTLISTED", "INTERVIEW", "OFFER", "HIRED"].includes(status) ? "Updated. The student was emailed." : "Updated")
     } catch (e) {
       toast.error((e as Error).message || "Couldn't update")
     }
@@ -95,6 +97,11 @@ function ApplicationRow({ app, showJob }: { app: Application; showJob: boolean }
             <FileTextIcon className="size-4" /> {app.tailoredCv ? "CV for this job" : "CV"}
           </a>
         )}
+        {onSchedule && app.status !== "REJECTED" && (
+          <button type="button" onClick={() => onSchedule(app)} className="inline-flex items-center gap-1 font-medium">
+            <CalendarPlusIcon className="size-4" /> Schedule interview
+          </button>
+        )}
       </div>
       {app.projects && app.projects.length > 0 && (
         <div className="mt-3 text-sm">
@@ -119,12 +126,23 @@ function ApplicationRow({ app, showJob }: { app: Application; showJob: boolean }
   )
 }
 
-export function ApplicationsList({ applications, showJob = false, empty }: { applications: Application[]; showJob?: boolean; empty: string }) {
+export function ApplicationsList({
+  applications,
+  showJob = false,
+  empty,
+  onSchedule,
+}: {
+  applications: Application[]
+  showJob?: boolean
+  empty: string
+  /** Companies: book an interview with the applicant. */
+  onSchedule?: OnSchedule
+}) {
   if (!applications.length) return <EmptyState title={empty} />
   return (
     <div className="space-y-3">
       {applications.map((a) => (
-        <ApplicationRow key={a.id} app={a} showJob={showJob} />
+        <ApplicationRow key={a.id} app={a} showJob={showJob} onSchedule={onSchedule} />
       ))}
     </div>
   )

@@ -33,6 +33,8 @@ import { PageIntro, SectionLabel, siteButton, siteContainer } from "@/lib/ui/use
 import { Textarea } from "@/lib/ui/useable-components/textarea"
 import { CONFIG } from "@/utils/constants"
 import { UserRole } from "@/utils/enums/user"
+import { CoverNoteButton, JobFitBox, PractiseButton } from "../careers/job-fit"
+import { PlacementStatsBand } from "../careers/public-stats"
 import { TailorForExternalJob, TailoredCvChoice } from "../resume/apply"
 import {
   COMPANY_SIZES,
@@ -48,6 +50,7 @@ import {
   companyPath,
   formatSalary,
   jobPath,
+  portfolioPath,
   selectClass,
   timeAgo,
   type Company,
@@ -224,6 +227,7 @@ function ApplyBox({ job }: { job: Job }) {
         </a>
         <p className="text-muted-foreground text-xs">You&apos;ll apply on another website. Add your portfolio link to your application there.</p>
         {role === UserRole.STUDENT && <TailorForExternalJob jobId={job.id} buttonClass={siteButton.outline} />}
+        {role === UserRole.STUDENT && !job.fit && <PractiseButton jobId={job.id} />}
       </div>
     )
   }
@@ -260,8 +264,9 @@ function ApplyBox({ job }: { job: Job }) {
   return (
     <div className="space-y-3">
       <Field label="Note to the company" hint="Optional. Why you'd be a good fit.">
-        <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={4} maxLength={2000} />
+        <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={5} maxLength={2000} />
       </Field>
+      <CoverNoteButton jobId={job.id} hasText={!!note.trim()} onDraft={setNote} />
       <TailoredCvChoice
         jobId={job.id}
         sending={loading}
@@ -323,6 +328,19 @@ export function JobDetailScreen({ id }: { id: string }) {
                 )}
                 {job.fromPartner && <PartnerBadge />}
               </p>
+              {job.referrer && (
+                <p className="text-muted-foreground mt-1 text-sm">
+                  Shared by{" "}
+                  {job.referrer.portfolioSlug ? (
+                    <Link href={portfolioPath(job.referrer.portfolioSlug)} className="hover:text-foreground font-medium">
+                      {job.referrer.fullName}
+                    </Link>
+                  ) : (
+                    job.referrer.fullName
+                  )}
+                  , a TechOn Skills graduate
+                </p>
+              )}
             </div>
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
@@ -354,6 +372,11 @@ export function JobDetailScreen({ id }: { id: string }) {
         </article>
         <aside className="h-fit space-y-4 rounded-xl border p-5 lg:sticky lg:top-24">
           <ApplyBox job={job} />
+          {job.fit && (
+            <div className="border-t pt-4">
+              <JobFitBox fit={job.fit} jobId={job.id} canPractise />
+            </div>
+          )}
           <div className="text-muted-foreground space-y-1 border-t pt-4 text-xs">
             <p>Posted {timeAgo(job.postedAt)}</p>
             {job.deadline && <p>Apply by {job.deadline}</p>}
@@ -668,6 +691,7 @@ export function HireScreen() {
         title="Hire students who've built real projects."
         description="Post jobs and internships for free. Students apply with a portfolio of their projects, marks and verified certificates, and you get every application by email."
       />
+      <PlacementStatsBand />
       <section className="py-12">
         <div className={cn(siteContainer, "max-w-3xl!")}>
           {done ? (
