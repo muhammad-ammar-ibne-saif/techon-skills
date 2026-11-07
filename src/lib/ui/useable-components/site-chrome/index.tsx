@@ -19,6 +19,7 @@ const ROUTES = CONFIG.ROUTES.PUBLIC
 
 const NAV_LINKS = [
   { label: "Courses", href: ROUTES.COURSES },
+  { label: "Jobs", href: ROUTES.JOBS },
   { label: "Method", href: "/#method" },
   { label: "Articles", href: ROUTES.ARTICLES },
   { label: "News", href: ROUTES.NEWS },

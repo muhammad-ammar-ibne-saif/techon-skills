@@ -1,22 +1,60 @@
 "use client"
 
 import Link from "next/link"
-import { useQuery } from "@apollo/client/react"
+import { useState } from "react"
+import { useMutation, useQuery } from "@apollo/client/react"
 import { ArrowLeftIcon, Loader2Icon } from "lucide-react"
+import toast from "react-hot-toast"
 
 import { Button } from "@/lib/ui/useable-components/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/lib/ui/useable-components/card"
-import { GET_COURSE_ASSIGNMENT_BY_ID, GET_SUBMISSIONS_FOR_ASSIGNMENT } from "@/lib/graphql"
+import { Textarea } from "@/lib/ui/useable-components/textarea"
+import { GET_COURSE_ASSIGNMENT_BY_ID, GET_SUBMISSIONS_FOR_ASSIGNMENT, SET_ASSIGNMENT_MARKING_GUIDE } from "@/lib/graphql"
 import { SubmissionGradingBlock, type SubmissionRow } from "@/lib/ui/screens/admin/submissions/submission-grading-block"
 
+function MarkingGuideEditor({ id, initial, onSaved }: { id: string; initial: string; onSaved: () => void }) {
+  const [value, setValue] = useState(initial)
+  const [save, { loading }] = useMutation(SET_ASSIGNMENT_MARKING_GUIDE)
+  const changed = value.trim() !== initial.trim()
+  const onSave = async () => {
+    try {
+      await save({ variables: { id, markingGuide: value } })
+      toast.success("Marking guide saved.")
+      onSaved()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save the marking guide.")
+    }
+  }
+  return (
+    <div>
+      <label className="text-muted-foreground mb-1 block text-xs font-medium">
+        Marking guide (staff only). It shows next to each submission while you grade.
+      </label>
+      <Textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        maxLength={5000}
+        placeholder="e.g. 4 for layout, 4 for working code, 2 for a README."
+        className="min-h-[80px] resize-y"
+      />
+      <div className="mt-2 flex justify-end">
+        <Button type="button" size="sm" shape="pill" variant="brand-secondary" disabled={!changed || loading} onClick={onSave}>
+          {loading ? <Loader2Icon className="size-4 animate-spin" /> : "Save guide"}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export const AdminAssignmentSubmissionsScreen = ({ assignmentId }: { assignmentId: string }) => {
-  const { data: assignData, loading: loadingA } = useQuery<{
+  const { data: assignData, loading: loadingA, refetch: refetchAssignment } = useQuery<{
     getCourseAssignmentById: {
       id: string
       courseId: string
       title: string
       description: string | null
       maxMarks: number
+      markingGuide: string | null
       referenceId: string
       dueDate: string | null
       course?: { id: string; title: string } | null
@@ -81,9 +119,20 @@ export const AdminAssignmentSubmissionsScreen = ({ assignmentId }: { assignmentI
               <span className="font-mono text-xs">{assignment.referenceId}</span>
             </CardDescription>
           </CardHeader>
-          {assignment.description ? (
-            <CardContent className="text-muted-foreground text-sm whitespace-pre-wrap">{assignment.description}</CardContent>
-          ) : null}
+          <CardContent className="space-y-4">
+            {assignment.description ? (
+              <div className="text-muted-foreground text-sm whitespace-pre-wrap">{assignment.description}</div>
+            ) : null}
+            <MarkingGuideEditor
+              key={`${assignment.id}:${assignment.markingGuide ?? ""}`}
+              id={assignment.id}
+              initial={assignment.markingGuide ?? ""}
+              onSaved={() => {
+                void refetchAssignment()
+                void refetch()
+              }}
+            />
+          </CardContent>
         </Card>
       ) : (
         <div className="mb-8 flex items-center gap-2 text-muted-foreground">

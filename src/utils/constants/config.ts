@@ -25,6 +25,8 @@ export const CONFIG = {
             SUBMIT: "/contact-form/submit",
             GET_CONTACT_SUBMISSIONS: "/contact-form/get-contact-form-requests",
             SEND_EMAIL: "/contact-form/send-email",
+            LEAD_COUNTS: "/contact-form/lead-counts",
+            UPDATE_LEAD: "/contact-form/lead",
             ASSIGN_COURSES: "/contact-form/assign-courses",
         },
         ENROLLMENT_APPLICATION: {
@@ -53,6 +55,9 @@ export const CONFIG = {
         FEES: {
             SUBMIT_PROOF: "/fees/submit-proof",
         },
+        HIRING: {
+            REGISTER: "/hiring/register",
+        },
         UPLOAD: {
             IMAGE: "/upload/image",
             IMAGES: "/upload/images",
@@ -76,6 +81,10 @@ export const CONFIG = {
             SUPPORT: "/support",
             VERIFY_MAGIC_LINK: "/auth/verify-magic-link",
             CERTIFICATE_VERIFY: "/certificates/verify",
+            JOBS: "/jobs",
+            COMPANIES: "/companies",
+            HIRE: "/hire",
+            PORTFOLIO: "/p",
         },
         NOT_FOUND_404: "/404",
         AUTH: {
@@ -94,6 +103,9 @@ export const CONFIG = {
             QUESTIONS: "/admin/questions",
             OFFERS: "/admin/offers",
             PROMOTIONS: "/admin/promotions",
+            JOBS: "/admin/jobs",
+            AT_RISK: "/admin/at-risk",
+            REPORTS: "/admin/reports",
             BATCHES: "/admin/batches",
             TICKETS: "/admin/tickets",
             NEWS: "/admin/news",
@@ -112,6 +124,12 @@ export const CONFIG = {
             SCHEDULE_LECTURES: "/admin/schedule-lectures",
             COURSE_CONTENT: "/admin/course-content",
             ATTENDANCE: "/admin/attendance",
+        },
+        EMPLOYER: {
+            DASHBOARD: "/employer/dashboard",
+            JOBS: "/employer/jobs",
+            APPLICATIONS: "/employer/applications",
+            COMPANY: "/employer/company",
         },
         STUDENT: {
             HOME: "/student",
@@ -132,6 +150,9 @@ export const CONFIG = {
             ANNOUNCEMENTS: "/student/announcements",
             FEES: "/student/fees",
             REFER: "/student/refer",
+            PORTFOLIO: "/student/portfolio",
+            RESUME: "/student/resume",
+            JOBS: "/student/jobs",
             EVENTS: "/student/events",
             ARTICLES: "/student/articles",
             ABOUT: "/student/about",

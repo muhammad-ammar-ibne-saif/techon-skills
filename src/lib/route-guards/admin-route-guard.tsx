@@ -27,6 +27,11 @@ export function AdminRouteGuard({ children }: { children: ReactNode }) {
       return;
     }
 
+    if (role === UserRole.EMPLOYER) {
+      router.replace(CONFIG.ROUTES.EMPLOYER.DASHBOARD);
+      return;
+    }
+
     if (role && !ADMIN_ROLES.includes(role)) {
       router.replace(CONFIG.ROUTES.PUBLIC.HOME);
     }

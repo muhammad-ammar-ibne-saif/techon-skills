@@ -6,6 +6,7 @@ export function getPostLoginHomePath(role?: UserRole | string | null): string {
   if (role === UserRole.INSTRUCTOR) return CONFIG.ROUTES.ADMIN.SUBMISSIONS
   if (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN) return CONFIG.ROUTES.ADMIN.DASHBOARD
   if (role === UserRole.STUDENT) return CONFIG.ROUTES.STUDENT.DASHBOARD
+  if (role === UserRole.EMPLOYER) return CONFIG.ROUTES.EMPLOYER.DASHBOARD
   return CONFIG.ROUTES.PUBLIC.HOME
 }
 

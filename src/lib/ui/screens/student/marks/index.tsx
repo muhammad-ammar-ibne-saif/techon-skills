@@ -27,6 +27,7 @@ type SubmissionItem = {
   maxMarks: number
   status: string
   markedAt: string | null
+  feedback?: string
   createdAt: string
   canStudentSubmit: boolean
 }
@@ -219,6 +220,11 @@ export const StudentMarksScreen = () => {
                           <div>
                             <div className="font-medium">{s.title}</div>
                             <div className="text-muted-foreground text-xs">{courseTitle(s.courseId)}</div>
+                            {s.status === "marked" && s.feedback ? (
+                              <p className="mt-1 max-w-md whitespace-pre-wrap text-xs">
+                                <span className="font-medium">Feedback:</span> {s.feedback}
+                              </p>
+                            ) : null}
                           </div>
                         </td>
                         <td className="p-4 capitalize">{s.type.replace("_", " ")}</td>

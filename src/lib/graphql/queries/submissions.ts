@@ -28,6 +28,8 @@ export const GET_SUBMISSIONS_FOR_COURSE = gql`
       maxMarks
       status
       markedAt
+      feedback
+      markingGuide
       createdAt
       user {
         id
@@ -66,6 +68,8 @@ export const GET_SUBMISSIONS_FOR_ASSIGNMENT = gql`
       maxMarks
       status
       markedAt
+      feedback
+      markingGuide
       createdAt
       user {
         id
@@ -90,6 +94,7 @@ export const GET_MY_SUBMISSIONS = gql`
       maxMarks
       status
       markedAt
+      feedback
       createdAt
       attachmentUrl
       attachmentUrls
@@ -118,6 +123,7 @@ export const GET_MY_MARKS_SUMMARY = gql`
         maxMarks
         status
         markedAt
+        feedback
         createdAt
         canStudentSubmit
       }
@@ -133,6 +139,7 @@ export const GET_SUBMISSION_BY_REFERENCE = gql`
       marks
       maxMarks
       markedAt
+      feedback
       attachmentUrl
       attachmentUrls
       resubmitAllowed

@@ -8,6 +8,7 @@ import toast from "react-hot-toast"
 import { Button } from "@/lib/ui/useable-components/button"
 import { Card, CardContent } from "@/lib/ui/useable-components/card"
 import { Input } from "@/lib/ui/useable-components/input"
+import { Textarea } from "@/lib/ui/useable-components/textarea"
 import { UPDATE_SUBMISSION_MARKS, SET_SUBMISSION_RESUBMIT_ALLOWED } from "@/lib/graphql"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { formatDateLong } from "@/lib/helpers"
@@ -40,6 +41,10 @@ export type SubmissionRow = {
   maxMarks: number
   status: string
   markedAt: string | null
+  /** Note to the student. */
+  feedback?: string
+  /** Staff-only marking guide of the assignment. */
+  markingGuide?: string | null
   createdAt: string
   resubmitAllowed: boolean
   passingGrade: boolean
@@ -67,8 +72,37 @@ function shortAnswerCap(sa: ShortAnswer, submission: SubmissionRow): number {
 }
 
 type MarkModalState =
-  | { mode: "assignment"; submission: SubmissionRow; marksInput: string; allowResubmit: boolean }
-  | { mode: "graded"; submission: SubmissionRow; perQuestion: Record<number, string> }
+  | { mode: "assignment"; submission: SubmissionRow; marksInput: string; allowResubmit: boolean; feedback: string }
+  | { mode: "graded"; submission: SubmissionRow; perQuestion: Record<number, string>; feedback: string }
+
+const MAX_FEEDBACK = 3000
+
+function MarkingGuideBox({ guide }: { guide?: string | null }) {
+  if (!guide) return null
+  return (
+    <div className="mt-4 rounded-lg border border-sky-500/30 bg-sky-500/10 p-3 text-sm">
+      <div className="mb-1 font-medium">Marking guide</div>
+      <p className="whitespace-pre-wrap text-muted-foreground">{guide}</p>
+    </div>
+  )
+}
+
+function MarkingExtras({ feedback, onFeedback }: { feedback: string; onFeedback: (v: string) => void }) {
+  return (
+    <div className="mt-4">
+      <label className="text-muted-foreground mb-1 block text-xs font-medium">
+        Feedback for the student (optional). It is shown with the marks and sent in the email.
+      </label>
+      <Textarea
+        value={feedback}
+        onChange={(e) => onFeedback(e.target.value)}
+        maxLength={MAX_FEEDBACK}
+        placeholder="What was good, and what to improve next time."
+        className="min-h-[80px] resize-y"
+      />
+    </div>
+  )
+}
 
 type SubmissionGradingBlockProps = {
   submissions: SubmissionRow[]
@@ -79,15 +113,18 @@ type SubmissionGradingBlockProps = {
 
 export function SubmissionGradingBlock({ submissions, loading, emptyMessage, refetch }: SubmissionGradingBlockProps) {
   const [markModal, setMarkModal] = useState<MarkModalState | null>(null)
+  /** Saved in this visit, so "next" skips them before the list reloads. */
+  const [savedIds, setSavedIds] = useState<string[]>([])
+  const [filter, setFilter] = useState<"pending" | "all" | null>(null)
 
-  const [updateMarks, { loading: updating }] = useMutation(UPDATE_SUBMISSION_MARKS, {
-    onCompleted: () => {
-      setMarkModal(null)
-      toast.success("Marks saved. Student will be notified.")
-      void refetch()
-    },
-    onError: (e) => toast.error(e.message ?? "Failed to save marks."),
-  })
+  const [updateMarks, { loading: updating }] = useMutation(UPDATE_SUBMISSION_MARKS)
+
+  const waiting = submissions.filter((s) => s.status === "submitted" && !savedIds.includes(s.id))
+  const pendingCount = submissions.filter((s) => s.status === "submitted").length
+  const view = filter ?? (pendingCount > 0 ? "pending" : "all")
+  const visible = view === "pending" ? submissions.filter((s) => s.status === "submitted") : submissions
+  const nextAfterCurrent = markModal ? waiting.find((s) => s.id !== markModal.submission.id) ?? null : null
+  const pendingLeft = markModal ? waiting.filter((s) => s.id !== markModal.submission.id).length + 1 : 0
 
   const [setResubmitAllowed, { loading: togglingResubmit }] = useMutation(SET_SUBMISSION_RESUBMIT_ALLOWED, {
     onCompleted: () => {
@@ -105,13 +142,14 @@ export function SubmissionGradingBlock({ submissions, loading, emptyMessage, ref
           perQuestion[sa.questionId] = sa.marksAwarded != null ? String(sa.marksAwarded) : ""
         }
       }
-      setMarkModal({ mode: "graded", submission: s, perQuestion })
+      setMarkModal({ mode: "graded", submission: s, perQuestion, feedback: s.feedback ?? "" })
     } else {
       setMarkModal({
         mode: "assignment",
         submission: s,
         marksInput: s.marks != null ? String(s.marks) : "",
         allowResubmit: false,
+        feedback: s.feedback ?? "",
       })
     }
   }
@@ -141,7 +179,28 @@ export function SubmissionGradingBlock({ submissions, loading, emptyMessage, ref
     return num < maxM * RESUBMIT_THRESHOLD
   })()
 
-  const handleMarkSubmit = () => {
+  const save = async (input: Record<string, unknown>, goNext: boolean) => {
+    if (!markModal) return
+    const current = markModal.submission
+    try {
+      await updateMarks({ variables: { input: { ...input, feedback: markModal.feedback.trim() } } })
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save marks.")
+      return
+    }
+    setSavedIds((prev) => [...prev, current.id])
+    void refetch()
+    const next = goNext ? waiting.find((s) => s.id !== current.id) : undefined
+    if (next) {
+      toast.success("Saved. Next submission opened.")
+      openMarkModal(next)
+    } else {
+      setMarkModal(null)
+      toast.success(goNext ? "Saved. Nothing else is waiting for marks." : "Marks saved. Student will be notified.")
+    }
+  }
+
+  const handleMarkSubmit = async (goNext: boolean) => {
     if (!markModal) return
     if (markModal.mode === "assignment") {
       const num = parseInt(markModal.marksInput, 10)
@@ -155,15 +214,7 @@ export function SubmissionGradingBlock({ submissions, loading, emptyMessage, ref
       }
       const maxM = markModal.submission.maxMarks
       const below = maxM > 0 && num < maxM * RESUBMIT_THRESHOLD
-      updateMarks({
-        variables: {
-          input: {
-            id: markModal.submission.id,
-            marks: num,
-            ...(below ? { allowResubmit: markModal.allowResubmit } : {}),
-          },
-        },
-      })
+      await save({ id: markModal.submission.id, marks: num, ...(below ? { allowResubmit: markModal.allowResubmit } : {}) }, goNext)
       return
     }
     const { submission, perQuestion } = markModal
@@ -187,14 +238,7 @@ export function SubmissionGradingBlock({ submissions, loading, emptyMessage, ref
       toast.error("No short-answer questions to grade")
       return
     }
-    updateMarks({
-      variables: {
-        input: {
-          id: submission.id,
-          shortAnswerMarks,
-        },
-      },
-    })
+    await save({ id: submission.id, shortAnswerMarks }, goNext)
   }
 
   if (loading) {
@@ -219,6 +263,36 @@ export function SubmissionGradingBlock({ submissions, loading, emptyMessage, ref
 
   return (
     <>
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+        {(
+          [
+            ["pending", `Waiting for marks (${pendingCount})`],
+            ["all", `All (${submissions.length})`],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setFilter(key)}
+            className={cn(
+              "rounded-full border px-3 py-1",
+              view === key ? "border-(--brand-secondary) bg-(--brand-secondary)/10 font-medium" : "text-muted-foreground"
+            )}
+          >
+            {label}
+          </button>
+        ))}
+        {waiting.length > 0 ? (
+          <Button type="button" size="sm" shape="pill" variant="brand-secondary" onClick={() => openMarkModal(waiting[0])}>
+            Start grading
+          </Button>
+        ) : null}
+      </div>
+      {visible.length === 0 ? (
+        <p className="text-muted-foreground rounded-2xl border border-dashed px-4 py-8 text-center text-sm">
+          Nothing is waiting for marks. Choose &quot;All&quot; to see marked work.
+        </p>
+      ) : (
       <Card className="bg-background/70 backdrop-blur rounded-3xl overflow-hidden">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -236,7 +310,7 @@ export function SubmissionGradingBlock({ submissions, loading, emptyMessage, ref
                 </tr>
               </thead>
               <tbody>
-                {submissions.map((s) => (
+                {visible.map((s) => (
                   <tr key={s.id} className="border-b transition-colors hover:bg-muted-surface/20">
                     <td className="p-4">
                       <div className="flex items-center gap-2">
@@ -278,6 +352,11 @@ export function SubmissionGradingBlock({ submissions, loading, emptyMessage, ref
                             Award marks
                           </Button>
                         ) : null}
+                        {s.status === "marked" ? (
+                          <Button type="button" variant="ghost" size="sm" shape="pill" onClick={() => openMarkModal(s)}>
+                            Edit
+                          </Button>
+                        ) : null}
                         {s.status === "marked" && !s.passingGrade ? (
                           <Button
                             type="button"
@@ -306,6 +385,7 @@ export function SubmissionGradingBlock({ submissions, loading, emptyMessage, ref
           </div>
         </CardContent>
       </Card>
+      )}
 
       <DialogPrimitive.Root open={!!markModal} onOpenChange={(open) => !open && setMarkModal(null)}>
         <DialogPrimitive.Portal>
@@ -342,6 +422,7 @@ export function SubmissionGradingBlock({ submissions, loading, emptyMessage, ref
                     </div>
                   ) : null
                 })()}
+                <MarkingGuideBox guide={markModal.submission.markingGuide} />
                 {markModal.submission.shortAnswers.length > 0 && (
                   <div className="mt-4 max-h-48 overflow-y-auto rounded-lg border bg-muted-surface/30 p-3 text-sm">
                     <div className="font-medium mb-2">Student content</div>
@@ -390,7 +471,11 @@ export function SubmissionGradingBlock({ submissions, loading, emptyMessage, ref
                     </span>
                   </label>
                 ) : null}
-                <div className="mt-6 flex justify-end gap-2">
+                <MarkingExtras
+                  feedback={markModal.feedback}
+                  onFeedback={(feedback) => setMarkModal((prev) => (prev ? { ...prev, feedback } : prev))}
+                />
+                <div className="mt-6 flex flex-wrap justify-end gap-2">
                   <DialogPrimitive.Close asChild>
                     <Button type="button" variant="outline" shape="pill">
                       Cancel
@@ -398,13 +483,24 @@ export function SubmissionGradingBlock({ submissions, loading, emptyMessage, ref
                   </DialogPrimitive.Close>
                   <Button
                     type="button"
-                    variant="brand-secondary"
+                    variant={nextAfterCurrent ? "outline" : "brand-secondary"}
                     shape="pill"
                     disabled={updating}
-                    onClick={handleMarkSubmit}
+                    onClick={() => void handleMarkSubmit(false)}
                   >
                     {updating ? <Loader2Icon className="size-4 animate-spin" /> : "Save marks"}
                   </Button>
+                  {nextAfterCurrent ? (
+                    <Button
+                      type="button"
+                      variant="brand-secondary"
+                      shape="pill"
+                      disabled={updating}
+                      onClick={() => void handleMarkSubmit(true)}
+                    >
+                      Save &amp; next ({pendingLeft - 1} left)
+                    </Button>
+                  ) : null}
                 </div>
               </>
             )}
@@ -485,7 +581,11 @@ export function SubmissionGradingBlock({ submissions, loading, emptyMessage, ref
                   </div>
                 </div>
 
-                <div className="mt-6 flex justify-end gap-2">
+                <MarkingExtras
+                  feedback={markModal.feedback}
+                  onFeedback={(feedback) => setMarkModal((prev) => (prev ? { ...prev, feedback } : prev))}
+                />
+                <div className="mt-6 flex flex-wrap justify-end gap-2">
                   <DialogPrimitive.Close asChild>
                     <Button type="button" variant="outline" shape="pill">
                       Cancel
@@ -493,13 +593,24 @@ export function SubmissionGradingBlock({ submissions, loading, emptyMessage, ref
                   </DialogPrimitive.Close>
                   <Button
                     type="button"
-                    variant="brand-secondary"
+                    variant={nextAfterCurrent ? "outline" : "brand-secondary"}
                     shape="pill"
                     disabled={updating}
-                    onClick={handleMarkSubmit}
+                    onClick={() => void handleMarkSubmit(false)}
                   >
                     {updating ? <Loader2Icon className="size-4 animate-spin" /> : "Save marks"}
                   </Button>
+                  {nextAfterCurrent ? (
+                    <Button
+                      type="button"
+                      variant="brand-secondary"
+                      shape="pill"
+                      disabled={updating}
+                      onClick={() => void handleMarkSubmit(true)}
+                    >
+                      Save &amp; next ({pendingLeft - 1} left)
+                    </Button>
+                  ) : null}
                 </div>
               </>
             )}

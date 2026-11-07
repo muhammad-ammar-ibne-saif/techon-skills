@@ -24,6 +24,7 @@ export const UPDATE_SUBMISSION_MARKS = gql`
       marks
       status
       markedAt
+      feedback
       resubmitAllowed
       passingGrade
       canStudentSubmit

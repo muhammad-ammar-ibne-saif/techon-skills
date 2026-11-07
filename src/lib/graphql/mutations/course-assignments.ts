@@ -17,6 +17,15 @@ export const CREATE_COURSE_ASSIGNMENT = gql`
   }
 `;
 
+export const SET_ASSIGNMENT_MARKING_GUIDE = gql`
+  mutation SetAssignmentMarkingGuide($id: ID!, $markingGuide: String!) {
+    setAssignmentMarkingGuide(id: $id, markingGuide: $markingGuide) {
+      id
+      markingGuide
+    }
+  }
+`;
+
 export const PUBLISH_COURSE_ASSIGNMENT = gql`
   mutation PublishCourseAssignment($id: ID!) {
     publishCourseAssignment(id: $id) {
