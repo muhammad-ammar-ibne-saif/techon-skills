@@ -97,7 +97,7 @@ export const AdminCertificatesScreen = () => {
   const templates = tplData?.getCertificateTemplates ?? []
   const certificates = certData?.getCertificatesAdmin ?? []
   const students = useMemo(
-    () => (usersData?.getUsers ?? []).filter((u) => u.role === "student"),
+    () => (usersData?.getUsers ?? []).filter((u) => u.role === "STUDENT"),
     [usersData?.getUsers]
   )
   const courses = coursesData?.getCourses ?? []
