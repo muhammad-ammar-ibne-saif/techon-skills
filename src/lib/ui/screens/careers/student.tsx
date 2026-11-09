@@ -27,17 +27,9 @@ import { CompanyLogo, EmptyState, Field, JOB_TYPE_LABEL, JobCard, Pill, StatusPi
 import { MyApplicationsList } from "../jobs/student"
 import { StudentInterviewCard, isUpcoming, type Interview } from "./interview"
 import { FitSummary, practicePath } from "./job-fit"
+import { CAREER_TABS, type CareerTab } from "./tabs"
 
 const ROUTES = CONFIG.ROUTES.STUDENT
-
-export const CAREER_TABS = [
-  { key: "for-you", label: "For you" },
-  { key: "applications", label: "Applications" },
-  { key: "invites", label: "Invites" },
-  { key: "interviews", label: "Interviews" },
-  { key: "practice", label: "Interview practice" },
-] as const
-export type CareerTab = (typeof CAREER_TABS)[number]["key"]
 
 export function StudentCareerHub({ tab }: { tab: CareerTab }) {
   return (
